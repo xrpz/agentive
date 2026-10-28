@@ -1,0 +1,14 @@
+{
+  "name": "agentive",
+  "description": "agentive framework plugins",
+  "owner": {
+    "name": "xrpz"
+  },
+  "plugins": [
+    {
+      "name": "agentive",
+      "source": "./plugins/claude-code/agentive",
+      "description": "AI-native SDLC and codebase framework: Claude Code implements, Codex reviews. /agentive:init configures a repo from its own evidence."
+    }
+  ]
+}

@@ -1,0 +1,288 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://fw.local/schemas/verify-result.schema.json",
+  "title": ".agents/state/verify.json (written by .agents/bin/verb wrapper; read by Stop hook)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "run_id",
+    "ts",
+    "verbs",
+    "total_failures",
+    "head_sha",
+    "worktree_dirty"
+  ],
+  "properties": {
+    "run_id": {
+      "type": "string"
+    },
+    "ts": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "total_failures": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "verbs": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "setup": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "ok",
+            "failures",
+            "duration_ms"
+          ],
+          "properties": {
+            "ok": {
+              "type": "boolean"
+            },
+            "failures": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "duration_ms": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "cmd": {
+              "type": "string",
+              "description": "the command that ran (recommended)"
+            },
+            "log": {
+              "type": "string",
+              "description": ".agents/state/logs/<verb>-<ts>.log"
+            }
+          }
+        },
+        "build": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "ok",
+            "failures",
+            "duration_ms"
+          ],
+          "properties": {
+            "ok": {
+              "type": "boolean"
+            },
+            "failures": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "duration_ms": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "cmd": {
+              "type": "string",
+              "description": "the command that ran (recommended)"
+            },
+            "log": {
+              "type": "string",
+              "description": ".agents/state/logs/<verb>-<ts>.log"
+            }
+          }
+        },
+        "lint": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "ok",
+            "failures",
+            "duration_ms"
+          ],
+          "properties": {
+            "ok": {
+              "type": "boolean"
+            },
+            "failures": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "duration_ms": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "cmd": {
+              "type": "string",
+              "description": "the command that ran (recommended)"
+            },
+            "log": {
+              "type": "string",
+              "description": ".agents/state/logs/<verb>-<ts>.log"
+            }
+          }
+        },
+        "typecheck": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "ok",
+            "failures",
+            "duration_ms"
+          ],
+          "properties": {
+            "ok": {
+              "type": "boolean"
+            },
+            "failures": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "duration_ms": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "cmd": {
+              "type": "string",
+              "description": "the command that ran (recommended)"
+            },
+            "log": {
+              "type": "string",
+              "description": ".agents/state/logs/<verb>-<ts>.log"
+            }
+          }
+        },
+        "test": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "ok",
+            "failures",
+            "duration_ms"
+          ],
+          "properties": {
+            "ok": {
+              "type": "boolean"
+            },
+            "failures": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "duration_ms": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "cmd": {
+              "type": "string",
+              "description": "the command that ran (recommended)"
+            },
+            "log": {
+              "type": "string",
+              "description": ".agents/state/logs/<verb>-<ts>.log"
+            }
+          }
+        },
+        "verify": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "ok",
+            "failures",
+            "duration_ms"
+          ],
+          "properties": {
+            "ok": {
+              "type": "boolean"
+            },
+            "failures": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "duration_ms": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "cmd": {
+              "type": "string",
+              "description": "the command that ran (recommended)"
+            },
+            "log": {
+              "type": "string",
+              "description": ".agents/state/logs/<verb>-<ts>.log"
+            }
+          }
+        },
+        "run": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "ok",
+            "failures",
+            "duration_ms"
+          ],
+          "properties": {
+            "ok": {
+              "type": "boolean"
+            },
+            "failures": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "duration_ms": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "cmd": {
+              "type": "string",
+              "description": "the command that ran (recommended)"
+            },
+            "log": {
+              "type": "string",
+              "description": ".agents/state/logs/<verb>-<ts>.log"
+            }
+          }
+        }
+      }
+    },
+    "history": {
+      "type": "array",
+      "maxItems": 10,
+      "items": {
+        "type": "object",
+        "required": [
+          "run_id",
+          "total_failures"
+        ],
+        "properties": {
+          "run_id": {
+            "type": "string"
+          },
+          "total_failures": {
+            "type": "integer"
+          }
+        }
+      }
+    },
+    "pending": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "enum": [
+          "setup",
+          "build",
+          "lint",
+          "typecheck",
+          "test",
+          "verify",
+          "run"
+        ]
+      },
+      "description": "verbs skipped because the manifest marks them pending (no evidence yet). They are not failures and not counted in total_failures. When no verb has a command the Stop hook reports PENDING, never DONE (spec.init_apply.empty_dir)"
+    },
+    "head_sha": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{7,64}$",
+      "description": "HEAD the verbs ran on (E1c); a PR whose HEAD differs makes this record stale"
+    },
+    "worktree_dirty": {
+      "type": "boolean",
+      "description": "true when the work tree had uncommitted changes; such a record is never reused for the PR ## Verification section (design judgment: no tree hash)"
+    }
+  }
+}

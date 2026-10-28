@@ -1,0 +1,6 @@
+# agentive-unit: rl.codex.rules-check
+# design: spec.repo_layer.files[f-codex-rules] (a `codex execpolicy check` fixture is generated with it)
+# One line per rendered prefix_rule: <expected decision> TAB <guard rule id> TAB <argv>. Check each with
+#   codex execpolicy check --rules .codex/rules/agentive.rules <argv...>
+# and compare the decision (experimental; UV-31).
+%%agentive:render.codex_rules_check%%

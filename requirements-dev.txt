@@ -1,0 +1,4 @@
+# agentive-unit: config.dev-deps
+# design: spec.framework_repo.self_tests (dev-time only; user repos and plugin payloads use python3 stdlib only)
+PyYAML==6.0.2
+jsonschema==4.23.0

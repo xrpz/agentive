@@ -1,0 +1,123 @@
+# agentive-unit: units.content
+# design: docs/IMPLEMENTATION.md §3 (units), §7 (ownership: C)
+owner: C
+units:
+  # ---------------------------------------------------------------- shared-file regions
+  - id: rl.agents-md
+    kind: repo_layer
+    class: shared
+    src: src/repo-layer/AGENTS.md.regions/
+    regions: [context, path-rules]
+    f: f-agents-md
+    refs: ["spec.repo_layer.files[f-agents-md]", "spec.init_apply.managed_regions", "spec.spec_stage.triage", "spec.spec_stage.chain.instructions", "spec.instructions.docs_vs_code", "spec.verification.app_run_pointer", "spec.one_way.pointer", "spec.outer_loop.service_facts", "spec.work_loop.precommit_review.order"]
+    note: "placeholders render.orientation, render.verbs, render.boundary_line, render.service_facts, render.path_rules (docs/impl/B.md §1)"
+  - id: rl.claude-md
+    kind: repo_layer
+    class: shared
+    src: src/repo-layer/CLAUDE.md.regions/
+    regions: [imports]
+    f: f-claude-md
+    refs: ["spec.repo_layer.files[f-claude-md]", "spec.context_management.compact_instructions"]
+  - id: rl.code-review
+    kind: repo_layer
+    class: shared
+    src: src/repo-layer/code_review.md.regions/
+    regions: [rules]
+    f: f-review-criteria
+    schema: review-rules
+    refs: ["spec.repo_layer.files[f-review-criteria]", "spec.review_pipeline.rules", "spec.review_pipeline.stages[RV2]", "spec.review_pipeline.stages[RV4]", "contracts[review-rules]"]
+    note: "the agentive-review-rules block (D reads it from the base commit); tests/content validates it against review-rules"
+  - id: rl.review-copy
+    kind: repo_layer
+    src: src/repo-layer/REVIEW.md
+    f: f-review-criteria
+    when: review.managed_code_review_copy
+    refs: ["spec.repo_layer.files[f-review-criteria].optional_copy", "spec.init_apply.gaps.optional_outputs"]
+    note: "byte copy of the rendered code_review.md via render.code_review_copy (requested from B)"
+  - id: rl.gitignore
+    kind: repo_layer
+    class: shared
+    src: src/repo-layer/dot-gitignore.regions/
+    regions: [state]
+    refs: ["spec.repo_layer.gitignore_state", "spec.repo_layer.files[f-state]", "spec.context_management.worktree"]
+  # ---------------------------------------------------------------- decisions, rubric, rule packs, docs
+  - id: rl.decisions
+    kind: repo_layer
+    src: src/repo-layer/dot-agents/decisions.yaml
+    f: f-decisions
+    schema: decisions
+    confirm_scope: [review_config]
+    refs: ["spec.repo_layer.files[f-decisions]", "contracts[decisions]", "spec.init_apply.evidence_only.u6"]
+  - id: rl.rubric
+    kind: repo_layer
+    src: src/repo-layer/dot-agents/rubric.yaml
+    f: f-rubric
+    schema: rubric
+    refs: ["spec.repo_layer.files[f-rubric]", "spec.review_pipeline.stages[RV7b].rubric", "contracts[rubric]"]
+  - id: rl.rules.structure
+    kind: repo_layer
+    src: src/repo-layer/dot-agents/rules/structure.md
+    f: f-rules
+    when: rule_packs.boundary
+    refs: ["spec.repo_layer.files[f-rules]", "spec.one_way.boundary_lint", "spec.one_way.pointer"]
+    note: "boundary rule pack, default off: installed only when the init skill turns rule_packs.boundary on (requested from B)"
+  - id: rl.docs
+    kind: repo_layer
+    src: src/repo-layer/docs/
+    f: f-adr
+    refs: ["spec.repo_layer.files[f-adr]", "spec.instructions.docs_vs_code"]
+  # ---------------------------------------------------------------- work-loop repo skills
+  - id: rl.skill.chain-intent
+    kind: repo_layer
+    src: src/repo-layer/dot-agents/skills/chain-intent/
+    f: f-chain-skills
+    refs: ["spec.repo_layer.files[f-chain-skills]", "spec.spec_stage.chain.flow", "spec.spec_stage.chain.interview", "spec.spec_stage.files.intent", "spec.spec_stage.triage.user_override", "spec.plugin.invocation.repo_skills"]
+  - id: rl.skill.chain-spec
+    kind: repo_layer
+    src: src/repo-layer/dot-agents/skills/chain-spec/
+    f: f-chain-skills
+    refs: ["spec.repo_layer.files[f-chain-skills]", "spec.spec_stage.chain.flow", "spec.spec_stage.files.spec", "spec.spec_stage.normative_conflicts", "spec.spec_stage.insufficient_spec", "spec.plugin.invocation.repo_skills"]
+  - id: rl.skill.chain-plan
+    kind: repo_layer
+    src: src/repo-layer/dot-agents/skills/chain-plan/
+    f: f-chain-skills
+    refs: ["spec.repo_layer.files[f-chain-skills]", "spec.spec_stage.chain.flow", "spec.spec_stage.files.plan", "spec.spec_stage.slices", "spec.spec_stage.provenance_tags", "spec.plugin.invocation.repo_skills"]
+  - id: rl.skill.chain-stage-check
+    kind: repo_layer
+    src: src/repo-layer/dot-agents/skills/chain-stage-check.sh
+    install: [.agents/skills/chain-intent/scripts/stage-check.sh, .agents/skills/chain-spec/scripts/stage-check.sh, .agents/skills/chain-plan/scripts/stage-check.sh]
+    f: f-chain-skills
+    refs: ["spec.spec_stage.chain.start_check", "spec.repo_layer.files[f-chain-skills]"]
+  - id: rl.skill.pr
+    kind: repo_layer
+    src: src/repo-layer/dot-agents/skills/pr/
+    f: f-pr
+    refs: ["spec.repo_layer.files[f-pr]", "spec.work_loop.pr_skill", "spec.work_loop.pr_explainer", "spec.verification.E1a", "spec.verification.E1b", "contracts[pr-body-fw-review]", "spec.plugin.invocation.pr"]
+    note: "scripts/pr-body.sh runs .agents/lib/agentive/prbody.py (+ gitgh.py)"
+  - id: rl.skill.pr-feedback
+    kind: repo_layer
+    src: src/repo-layer/dot-agents/skills/pr-feedback/
+    f: f-pr-feedback
+    refs: ["spec.repo_layer.files[f-pr-feedback]", "spec.work_loop.pr_feedback", "spec.review_pipeline.severity_blocking.reply_line"]
+    note: "scripts/pr-state.sh runs .agents/lib/agentive/prstate.py"
+  - id: rl.skill.distill
+    kind: repo_layer
+    src: src/repo-layer/dot-agents/skills/distill/
+    f: f-distill
+    refs: ["spec.repo_layer.files[f-distill]", "spec.maintenance.distill", "spec.maintenance.harvest", "spec.review_pipeline.reviewer_eval.intake", "contracts[harvest-queue]", "spec.plugin.invocation.distill"]
+    note: "scripts/queue-read.sh runs .agents/lib/agentive/distillq.py"
+  - id: rl.skill.verify
+    kind: repo_layer
+    src: src/repo-layer/dot-agents/skills/verify/
+    f: f-verify
+    refs: ["spec.repo_layer.files[f-verify]", "spec.verification", "spec.maintenance.supply_chain.checks", "spec.plugin.invocation.repo_skills"]
+  - id: rl.skill.precommit-review
+    kind: repo_layer
+    src: src/repo-layer/dot-agents/skills/precommit-review/
+    f: f-precommit
+    refs: ["spec.repo_layer.files[f-precommit]", "spec.work_loop.precommit_review", "spec.review_pipeline.profiles.precommit", "contracts[precommit-review]"]
+  - id: rl.skill.janitor
+    kind: repo_layer
+    src: src/repo-layer/dot-agents/skills/janitor/
+    f: f-janitor
+    refs: ["spec.repo_layer.files[f-janitor]", "spec.maintenance.janitor", "spec.plugin.invocation.repo_skills"]

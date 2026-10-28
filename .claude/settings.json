@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "deny": [
+      "Edit(/plugins/**)",
+      "Edit(/docs/map/**)",
+      "Edit(/docs/DECISIONS.md)",
+      "Edit(/.claude-plugin/marketplace.json)",
+      "Edit(/.agents/plugins/marketplace.json)",
+      "Edit(/CHANGELOG.md)",
+      "Edit(/package-lock.json)"
+    ]
+  }
+}

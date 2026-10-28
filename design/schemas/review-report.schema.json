@@ -1,0 +1,2359 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://fw.local/schemas/review-report.schema.json",
+  "title": "review-report.json (code-review pipeline RV1-RV8 + RV7b output; local .agents/state/ or CI artifact)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "profile",
+    "head_sha",
+    "stages_run",
+    "rv1",
+    "rv2",
+    "at",
+    "u2"
+  ],
+  "properties": {
+    "profile": {
+      "enum": [
+        "precommit",
+        "ci"
+      ]
+    },
+    "head_sha": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{7,64}$"
+    },
+    "stages_run": {
+      "type": "array",
+      "items": {
+        "$ref": "review-config.schema.json#/$defs/stage_id"
+      },
+      "uniqueItems": true
+    },
+    "rv1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "checks",
+        "excluded",
+        "diff_stats"
+      ],
+      "properties": {
+        "checks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "name",
+              "status"
+            ],
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "status": {
+                "enum": [
+                  "pass",
+                  "fail",
+                  "skipped"
+                ]
+              },
+              "source": {
+                "enum": [
+                  "verify.json",
+                  "ci"
+                ]
+              }
+            }
+          }
+        },
+        "excluded": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "diff_stats": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "files",
+            "added",
+            "deleted"
+          ],
+          "properties": {
+            "files": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "added": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "deleted": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        },
+        "criteria": {
+          "$ref": "review-config.schema.json#/$defs/criteria_map"
+        },
+        "signals": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "collected by RV1 for later stages",
+          "properties": {
+            "public_api_change": {
+              "enum": [
+                "breaking",
+                "none",
+                "skipped"
+              ],
+              "description": "skipped when the agentive manifest has no paths.public_api"
+            },
+            "test_only_deletion": {
+              "type": "boolean"
+            },
+            "inline_suppressions": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "added suppression lines (advisory checklist for RV5)"
+            },
+            "agentive_check_tags": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "added": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "removed": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
+            },
+            "new_direct_dependencies": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "env_vars_changed": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "changed_files": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "modules_touched": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "shared_path_touched": {
+              "type": "boolean"
+            },
+            "incident_history_90d": {
+              "type": "boolean",
+              "description": "revert or hotfix on a touched file within 90 days"
+            },
+            "recent_churn_30d": {
+              "type": "boolean",
+              "description": "a touched file changed within 30 days"
+            },
+            "pending_verbs": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "coverage": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "status": {
+                  "enum": [
+                    "ok",
+                    "below_threshold",
+                    "exempt",
+                    "coverage_unavailable"
+                  ]
+                },
+                "new_code_pct": {
+                  "type": "number"
+                },
+                "new_lines": {
+                  "type": "integer"
+                }
+              }
+            }
+          }
+        },
+        "chain": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "result"
+          ],
+          "description": "artifact-chain order check (decisions.accepted CHAIN; rules in pr-body-agentive-review.schema.json x-agentive-chain). Computed by RV1 from the diff, the base tree and agentive-review.chain; RV8 blocks on chain_order (profile ci); the precommit profile reports only",
+          "properties": {
+            "slug": {
+              "type": "string",
+              "pattern": "^(?!archive$)[a-z0-9]+(?:-[a-z0-9]+)*$"
+            },
+            "stage": {
+              "enum": [
+                "intent",
+                "spec",
+                "feature"
+              ]
+            },
+            "changed_artifacts": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "base_has_intent": {
+              "type": "boolean"
+            },
+            "base_has_spec": {
+              "type": "boolean"
+            },
+            "head_has_plan": {
+              "type": "boolean"
+            },
+            "result": {
+              "enum": [
+                "ok",
+                "chain_order",
+                "not_chain"
+              ]
+            },
+            "problems": {
+              "type": "array",
+              "uniqueItems": true,
+              "items": {
+                "enum": [
+                  "intent_not_on_base",
+                  "spec_not_on_base",
+                  "plan_not_in_head",
+                  "mixed_artifacts",
+                  "multiple_slugs"
+                ]
+              }
+            },
+            "next_action": {
+              "type": "string"
+            }
+          },
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "result": {
+                    "const": "ok"
+                  }
+                },
+                "required": [
+                  "result"
+                ]
+              },
+              "then": {
+                "required": [
+                  "slug",
+                  "stage"
+                ],
+                "properties": {
+                  "problems": {
+                    "maxItems": 0
+                  }
+                }
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "result": {
+                    "const": "chain_order"
+                  }
+                },
+                "required": [
+                  "result"
+                ]
+              },
+              "then": {
+                "required": [
+                  "problems",
+                  "next_action"
+                ],
+                "properties": {
+                  "problems": {
+                    "minItems": 1
+                  }
+                }
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "result": {
+                    "const": "not_chain"
+                  }
+                },
+                "required": [
+                  "result"
+                ]
+              },
+              "then": {
+                "not": {
+                  "anyOf": [
+                    {
+                      "required": [
+                        "slug"
+                      ]
+                    },
+                    {
+                      "required": [
+                        "stage"
+                      ]
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "stage": {
+                    "const": "spec"
+                  },
+                  "base_has_intent": {
+                    "const": false
+                  }
+                },
+                "required": [
+                  "stage",
+                  "base_has_intent"
+                ]
+              },
+              "then": {
+                "properties": {
+                  "result": {
+                    "const": "chain_order"
+                  },
+                  "problems": {
+                    "contains": {
+                      "const": "intent_not_on_base"
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "stage": {
+                    "const": "feature"
+                  },
+                  "base_has_spec": {
+                    "const": false
+                  }
+                },
+                "required": [
+                  "stage",
+                  "base_has_spec"
+                ]
+              },
+              "then": {
+                "properties": {
+                  "result": {
+                    "const": "chain_order"
+                  },
+                  "problems": {
+                    "contains": {
+                      "const": "spec_not_on_base"
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "stage": {
+                    "const": "feature"
+                  },
+                  "head_has_plan": {
+                    "const": false
+                  }
+                },
+                "required": [
+                  "stage",
+                  "head_has_plan"
+                ]
+              },
+              "then": {
+                "properties": {
+                  "result": {
+                    "const": "chain_order"
+                  },
+                  "problems": {
+                    "contains": {
+                      "const": "plan_not_in_head"
+                    }
+                  }
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "rv2": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "hits",
+        "confirm_scope_hits"
+      ],
+      "properties": {
+        "hits": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "path",
+              "glob",
+              "reason"
+            ],
+            "properties": {
+              "path": {
+                "type": "string"
+              },
+              "glob": {
+                "type": "string"
+              },
+              "reason": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "confirm_scope_hits": {
+          "type": "array",
+          "description": "RV2.confirm_scope: changed paths that match agentive-review-rules.trust_boundary.confirm_scope_globs (U2 confirm_scope categories)",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "path",
+              "category",
+              "glob"
+            ],
+            "properties": {
+              "path": {
+                "type": "string"
+              },
+              "category": {
+                "enum": [
+                  "hooks",
+                  "permissions",
+                  "ci",
+                  "claude_settings",
+                  "codex_dir",
+                  "review_config"
+                ]
+              },
+              "glob": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    },
+    "rv3": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "classes",
+        "method"
+      ],
+      "properties": {
+        "classes": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "review-rules.schema.json#/$defs/class"
+          },
+          "uniqueItems": true
+        },
+        "method": {
+          "enum": [
+            "deterministic",
+            "llm"
+          ]
+        },
+        "llm_valid": {
+          "type": "boolean",
+          "description": "false -> the LLM layer output was invalid and the PR goes to a human"
+        }
+      }
+    },
+    "rv4": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "tier",
+        "reasons"
+      ],
+      "properties": {
+        "tier": {
+          "enum": [
+            0,
+            1,
+            2
+          ]
+        },
+        "reasons": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "raised_by_llm": {
+          "type": "boolean",
+          "description": "RV4.raise: the raise-only check moved the tier to 2 (reason llm_raise)"
+        }
+      }
+    },
+    "rv5": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "reviewers"
+      ],
+      "properties": {
+        "reviewers": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "reviewer_id",
+              "tool",
+              "session_id",
+              "context"
+            ],
+            "properties": {
+              "tool": {
+                "enum": [
+                  "claude_code",
+                  "codex",
+                  "other"
+                ]
+              },
+              "model": {
+                "type": "string"
+              },
+              "session_id": {
+                "type": "string"
+              },
+              "context": {
+                "const": "fresh"
+              },
+              "reviewer_id": {
+                "$ref": "review-config.schema.json#/$defs/reviewer_id"
+              },
+              "shadow": {
+                "type": "boolean"
+              }
+            }
+          }
+        }
+      }
+    },
+    "findings": {
+      "type": "array",
+      "description": "RV6 output (merged, deduped, ranked); RV7 fills verification",
+      "items": {
+        "$ref": "#/$defs/finding"
+      }
+    },
+    "rv7b": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "score",
+        "reason"
+      ],
+      "description": "RV7b risk score (U6 agentive:rubric@1); computed only, never compared with the threshold here",
+      "properties": {
+        "score": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 100
+        },
+        "reason": {
+          "enum": [
+            "computed",
+            "not_tier1",
+            "tier1_off",
+            "config_invalid"
+          ]
+        },
+        "preset": {
+          "type": "string",
+          "pattern": "^agentive:rubric@[0-9]+$"
+        },
+        "human_if_score_gt": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "config_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "hit",
+              "weight"
+            ],
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "hit": {
+                "type": "boolean"
+              },
+              "weight": {
+                "type": "integer",
+                "minimum": 0
+              }
+            }
+          }
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "reason": {
+                "const": "computed"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "preset",
+              "human_if_score_gt",
+              "config_sha256",
+              "items"
+            ],
+            "properties": {
+              "score": {
+                "type": "integer"
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "score": {
+                "const": null
+              }
+            }
+          }
+        }
+      ]
+    },
+    "rv8": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "decision",
+        "reasons",
+        "u1_value",
+        "auto_merge",
+        "check_conclusion",
+        "head_sha"
+      ],
+      "properties": {
+        "decision": {
+          "enum": [
+            "pass",
+            "human_required",
+            "block"
+          ]
+        },
+        "reasons": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "reason_codes": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/gate_reason"
+          },
+          "description": "the same decision as reason codes (optional; $defs.gate_reason); every code the gate rules name"
+        },
+        "u1_value": {
+          "enum": [
+            "A",
+            "B",
+            "C"
+          ],
+          "description": "decisions.U1 read at gate time (user decided C on 2026-10-14; A/B allowed as project override)"
+        },
+        "check_conclusion": {
+          "enum": [
+            "success",
+            "failure"
+          ],
+          "description": "never neutral. block -> failure; human_required -> success with auto_merge false (the directing human merges, P3); pass -> success"
+        },
+        "auto_merge": {
+          "type": "boolean",
+          "description": "true -> gate runs gh pr merge --auto"
+        },
+        "demoted": {
+          "type": "boolean",
+          "description": "U1.c: a demotion issue is open for this PR's tier and source"
+        },
+        "tier1_mode": {
+          "enum": [
+            "shadow",
+            "on",
+            "off"
+          ]
+        },
+        "shadow_would_auto_merge": {
+          "type": "boolean",
+          "description": "tier 1 in shadow mode: the gate would have auto-merged (label agentive:shadow-auto-merge)"
+        },
+        "kill_switch": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "tier",
+            "source",
+            "count"
+          ],
+          "properties": {
+            "tier": {
+              "enum": [
+                0,
+                1
+              ]
+            },
+            "source": {
+              "type": "string"
+            },
+            "count": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "auto-merged PRs of this tier and source reverted or hotfixed within 7 days, counted after the latest close of a demotion issue for this scope"
+            }
+          }
+        },
+        "gate_only": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "public_api_breaking",
+              "test_only_deletion",
+              "coverage_below_threshold"
+            ]
+          },
+          "description": "conditions that block auto-merge without raising the tier"
+        },
+        "head_sha": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{7,64}$",
+          "description": "the decision is bound to this head (P4)"
+        },
+        "explainer": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "required",
+            "result"
+          ],
+          "description": "tier-2 ## Explainer presence check (decisions.accepted EXPLAIN, revised 2026-10-27: presence only; rules in pr-body-agentive-review.schema.json x-agentive-body-headings.tier2_explainer). Mermaid syntax and code refs are not checked; retired fields: head_refs, unresolved_refs; retired problem code: no_head_code_ref",
+          "properties": {
+            "required": {
+              "type": "boolean",
+              "description": "true exactly when RV4 assigned tier 2"
+            },
+            "result": {
+              "enum": [
+                "ok",
+                "explainer_missing",
+                "not_required"
+              ]
+            },
+            "problems": {
+              "type": "array",
+              "uniqueItems": true,
+              "items": {
+                "enum": [
+                  "no_section",
+                  "not_first",
+                  "no_before",
+                  "no_after",
+                  "before_order",
+                  "before_no_mermaid",
+                  "after_no_mermaid"
+                ]
+              }
+            },
+            "next_action": {
+              "type": "string",
+              "description": "message shown in the check summary, e.g. run /pr --explain"
+            },
+            "trigger": {
+              "enum": [
+                "synchronize",
+                "opened",
+                "reopened",
+                "edited",
+                "merge_group",
+                "pull_request_review_comment"
+              ],
+              "description": "event that ran this gate decision; edited and pull_request_review_comment (an agentive-reply line) re-run the gate without a new review round. pull_request_review is not a trigger (retired 2026-10-27, F-08: the gate does not run on a review submission)"
+            },
+            "present": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "section",
+                "first",
+                "before",
+                "after",
+                "before_mermaid",
+                "after_mermaid"
+              ],
+              "description": "the presence check, one boolean per rule: ## Explainer exists, is the first level-2 heading, has ### Before and ### After (in this order), and each holds a ```mermaid block",
+              "properties": {
+                "section": {
+                  "type": "boolean"
+                },
+                "first": {
+                  "type": "boolean"
+                },
+                "before": {
+                  "type": "boolean"
+                },
+                "after": {
+                  "type": "boolean"
+                },
+                "before_mermaid": {
+                  "type": "boolean"
+                },
+                "after_mermaid": {
+                  "type": "boolean"
+                }
+              }
+            }
+          },
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "result": {
+                    "const": "ok"
+                  }
+                },
+                "required": [
+                  "result"
+                ]
+              },
+              "then": {
+                "properties": {
+                  "required": {
+                    "const": true
+                  },
+                  "problems": {
+                    "maxItems": 0
+                  },
+                  "present": {
+                    "properties": {
+                      "section": {
+                        "const": true
+                      },
+                      "first": {
+                        "const": true
+                      },
+                      "before": {
+                        "const": true
+                      },
+                      "after": {
+                        "const": true
+                      },
+                      "before_mermaid": {
+                        "const": true
+                      },
+                      "after_mermaid": {
+                        "const": true
+                      }
+                    }
+                  }
+                },
+                "required": [
+                  "present"
+                ]
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "result": {
+                    "const": "explainer_missing"
+                  }
+                },
+                "required": [
+                  "result"
+                ]
+              },
+              "then": {
+                "properties": {
+                  "required": {
+                    "const": true
+                  },
+                  "problems": {
+                    "minItems": 1
+                  }
+                },
+                "required": [
+                  "problems",
+                  "next_action",
+                  "present"
+                ]
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "result": {
+                    "const": "not_required"
+                  }
+                },
+                "required": [
+                  "result"
+                ]
+              },
+              "then": {
+                "properties": {
+                  "required": {
+                    "const": false
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "auto_merge": {
+                "const": true
+              }
+            },
+            "required": [
+              "auto_merge"
+            ]
+          },
+          "then": {
+            "properties": {
+              "decision": {
+                "const": "pass"
+              },
+              "demoted": {
+                "const": false
+              },
+              "gate_only": {
+                "maxItems": 0
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "decision": {
+                "const": "block"
+              }
+            },
+            "required": [
+              "decision"
+            ]
+          },
+          "then": {
+            "properties": {
+              "check_conclusion": {
+                "const": "failure"
+              },
+              "auto_merge": {
+                "const": false
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "decision": {
+                "enum": [
+                  "pass",
+                  "human_required"
+                ]
+              }
+            },
+            "required": [
+              "decision"
+            ]
+          },
+          "then": {
+            "properties": {
+              "check_conclusion": {
+                "const": "success"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "decision": {
+                "const": "human_required"
+              }
+            },
+            "required": [
+              "decision"
+            ]
+          },
+          "then": {
+            "properties": {
+              "auto_merge": {
+                "const": false
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "shadow_would_auto_merge": {
+                "const": true
+              }
+            },
+            "required": [
+              "shadow_would_auto_merge"
+            ]
+          },
+          "then": {
+            "properties": {
+              "auto_merge": {
+                "const": false
+              },
+              "tier1_mode": {
+                "const": "shadow"
+              }
+            },
+            "required": [
+              "tier1_mode"
+            ]
+          }
+        },
+        {
+          "description": "explainer_missing blocks: decision block (check failure) with reason explainer_missing",
+          "if": {
+            "properties": {
+              "explainer": {
+                "properties": {
+                  "result": {
+                    "const": "explainer_missing"
+                  }
+                },
+                "required": [
+                  "result"
+                ]
+              }
+            },
+            "required": [
+              "explainer"
+            ]
+          },
+          "then": {
+            "properties": {
+              "decision": {
+                "const": "block"
+              },
+              "reasons": {
+                "contains": {
+                  "const": "explainer_missing"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "u2": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "run",
+        "human_confirmation",
+        "action",
+        "source"
+      ],
+      "description": "U2 final confirmation record (decision U2=B and U2.non_interactive, user 2026-10-14). human_confirmation obtained only when a human answered the confirmation in the run that made the change; a missing record counts as not_obtained.",
+      "properties": {
+        "run": {
+          "enum": [
+            "interactive",
+            "non_interactive",
+            "unknown"
+          ],
+          "description": "unknown: CI cannot tell how the change was made (no official signal separates claude -p in a hook, UV-12); treated like non_interactive unless a human confirmation is recorded"
+        },
+        "human_confirmation": {
+          "enum": [
+            "not_required",
+            "obtained",
+            "not_obtained"
+          ]
+        },
+        "action": {
+          "enum": [
+            "commit",
+            "pr_only_tier2"
+          ],
+          "description": "pr_only_tier2: no direct commit to the default branch and no merge; PR only, tier 2"
+        },
+        "source": {
+          "enum": [
+            "local",
+            "pr_body",
+            "pr_body_missing"
+          ]
+        }
+      }
+    },
+    "review_round": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "round",
+        "mode"
+      ],
+      "properties": {
+        "round": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "1 = first review of the PR; +1 per new reviewed head"
+        },
+        "mode": {
+          "enum": [
+            "full",
+            "incremental"
+          ],
+          "description": "round 1 and an explicit agentive:full-review request are full; later rounds review only the diff since the last reviewed head plus open findings"
+        },
+        "since_sha": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{7,64}$"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "round": {
+                "const": 1
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "mode": {
+                "const": "full"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "mode": {
+                "const": "incremental"
+              }
+            },
+            "required": [
+              "mode"
+            ]
+          },
+          "then": {
+            "required": [
+              "since_sha"
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "$defs": {
+    "finding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "reviewers",
+        "severity",
+        "blocking",
+        "file",
+        "line",
+        "trigger",
+        "summary"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "severity": {
+          "enum": [
+            "important",
+            "nit",
+            "pre_existing"
+          ]
+        },
+        "blocking": {
+          "type": "boolean"
+        },
+        "file": {
+          "type": "string"
+        },
+        "line": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "summary": {
+          "type": "string"
+        },
+        "evidence": {
+          "type": "string"
+        },
+        "merged_from": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "verification": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "verdict",
+            "verifier_session_id"
+          ],
+          "properties": {
+            "verdict": {
+              "enum": [
+                "confirmed",
+                "refuted",
+                "inconclusive"
+              ]
+            },
+            "verifier_session_id": {
+              "type": "string"
+            },
+            "method": {
+              "enum": [
+                "execution",
+                "different_model",
+                "adversarial_fresh_context"
+              ],
+              "description": "execution (a reproducing test or shell command) first, otherwise a different-model verifier"
+            },
+            "note": {
+              "type": "string"
+            }
+          }
+        },
+        "reviewers": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "review-config.schema.json#/$defs/reviewer_id"
+          },
+          "uniqueItems": true,
+          "description": "kept after dedupe so one axis does not mask another"
+        },
+        "trigger": {
+          "type": "string",
+          "minLength": 1,
+          "description": "the condition under which the defect shows (required with file:line)"
+        },
+        "bug_class": {
+          "type": "string",
+          "description": "one finding names every instance of the pattern"
+        },
+        "instances": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "file",
+              "line"
+            ],
+            "properties": {
+              "file": {
+                "type": "string"
+              },
+              "line": {
+                "type": "integer",
+                "minimum": 1
+              }
+            }
+          }
+        },
+        "shadow": {
+          "type": "boolean",
+          "description": "from a shadow reviewer: never blocking"
+        },
+        "first_posted_round": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "response": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind"
+          ],
+          "properties": {
+            "kind": {
+              "enum": [
+                "fixed",
+                "replied_resolved",
+                "open"
+              ]
+            },
+            "reason": {
+              "enum": [
+                "fixed",
+                "wrong",
+                "intentional",
+                "not_important"
+              ]
+            },
+            "source": {
+              "enum": [
+                "reply_line",
+                "next_round",
+                "inferred"
+              ],
+              "description": "reply_line = an agentive-reply line from an author with write access; next_round = the finding did not recur in the next round (the only way fixed is confirmed); inferred = a reason inferred at read time from a plain reply, tagged [inferred]"
+            },
+            "comment_id": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "REST id of the reply comment that holds the agentive-reply line"
+            }
+          },
+          "description": "the author's answer (P5; review_pipeline.severity_blocking.reply_line, decisions.accepted REPLYLINE)",
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "source": {
+                    "const": "next_round"
+                  }
+                },
+                "required": [
+                  "source"
+                ]
+              },
+              "then": {
+                "properties": {
+                  "kind": {
+                    "const": "fixed"
+                  },
+                  "reason": {
+                    "const": "fixed"
+                  }
+                }
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "source": {
+                    "const": "reply_line"
+                  }
+                },
+                "required": [
+                  "source"
+                ]
+              },
+              "then": {
+                "required": [
+                  "reason",
+                  "comment_id"
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "required": [
+              "verification"
+            ],
+            "properties": {
+              "verification": {
+                "properties": {
+                  "verdict": {
+                    "enum": [
+                      "refuted",
+                      "inconclusive"
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "blocking": {
+                "const": false
+              }
+            }
+          }
+        },
+        {
+          "description": "only important findings can block (F1f)",
+          "if": {
+            "properties": {
+              "severity": {
+                "enum": [
+                  "nit",
+                  "pre_existing"
+                ]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "blocking": {
+                "const": false
+              }
+            }
+          }
+        },
+        {
+          "description": "shadow reviewer findings never block",
+          "if": {
+            "properties": {
+              "shadow": {
+                "const": true
+              }
+            },
+            "required": [
+              "shadow"
+            ]
+          },
+          "then": {
+            "properties": {
+              "blocking": {
+                "const": false
+              }
+            }
+          }
+        }
+      ]
+    },
+    "gate_reason": {
+      "enum": [
+        "failing_required_check",
+        "unanswered_finding",
+        "U2.non_interactive",
+        "explainer_missing",
+        "chain_order",
+        "tier2",
+        "trust_boundary",
+        "always_human",
+        "chain_approval",
+        "llm_raise",
+        "critical_cve_unchecked",
+        "inconclusive_finding",
+        "finding_disputed",
+        "review_rounds_exceeded",
+        "pending_verbs",
+        "shadow",
+        "tier1_off",
+        "rubric_invalid",
+        "score_above_threshold",
+        "demoted",
+        "gate_only",
+        "coverage_unavailable",
+        "u1_policy"
+      ],
+      "description": "machine-readable reason codes of the RV8 decision (F-24, 2026-10-27): failing_required_check and unanswered_finding (block), U2.non_interactive (human_required, RV4.u2_non_interactive), explainer_missing and chain_order (block), tier2, trust_boundary (RV2 hit), always_human, chain_approval, llm_raise (RV4 raise-only check), critical_cve_unchecked, inconclusive_finding, finding_disputed, review_rounds_exceeded, pending_verbs (human_required), shadow, tier1_off, rubric_invalid, score_above_threshold, demoted (tier 1 or the kill switch keeps auto-merge off), gate_only (a gate-only condition), coverage_unavailable (the coverage gate was skipped), u1_policy (U1=A or B keeps auto-merge off). reasons[] stays free text for people"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "profile": {
+            "const": "ci"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "findings",
+          "rv7b",
+          "rv8",
+          "review_round"
+        ]
+      }
+    },
+    {
+      "description": "tier 2 never auto-merges",
+      "if": {
+        "required": [
+          "rv4",
+          "rv8"
+        ],
+        "properties": {
+          "rv4": {
+            "properties": {
+              "tier": {
+                "const": 2
+              }
+            }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "rv8": {
+            "properties": {
+              "auto_merge": {
+                "const": false
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "description": "U1=A: nothing auto-merges",
+      "if": {
+        "required": [
+          "rv8"
+        ],
+        "properties": {
+          "rv8": {
+            "properties": {
+              "u1_value": {
+                "const": "A"
+              }
+            },
+            "required": [
+              "u1_value"
+            ]
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "rv8": {
+            "properties": {
+              "auto_merge": {
+                "const": false
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "description": "U1=B: tier 1 never auto-merges",
+      "if": {
+        "required": [
+          "rv4",
+          "rv8"
+        ],
+        "properties": {
+          "rv4": {
+            "properties": {
+              "tier": {
+                "const": 1
+              }
+            }
+          },
+          "rv8": {
+            "properties": {
+              "u1_value": {
+                "const": "B"
+              }
+            },
+            "required": [
+              "u1_value"
+            ]
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "rv8": {
+            "properties": {
+              "auto_merge": {
+                "const": false
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "description": "U1=C conditions a, c, d: tier 1 auto-merge needs a computed RV7b score, tier1 mode on and no demotion (score <= human_if_score_gt is checked by RV8; JSON Schema cannot compare two fields)",
+      "if": {
+        "required": [
+          "rv4",
+          "rv8"
+        ],
+        "properties": {
+          "rv4": {
+            "properties": {
+              "tier": {
+                "const": 1
+              }
+            }
+          },
+          "rv8": {
+            "properties": {
+              "auto_merge": {
+                "const": true
+              }
+            },
+            "required": [
+              "auto_merge"
+            ]
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "rv7b"
+        ],
+        "properties": {
+          "rv7b": {
+            "properties": {
+              "reason": {
+                "const": "computed"
+              }
+            }
+          },
+          "rv8": {
+            "required": [
+              "tier1_mode",
+              "demoted"
+            ],
+            "properties": {
+              "tier1_mode": {
+                "const": "on"
+              },
+              "demoted": {
+                "const": false
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "description": "no confirm_scope hit -> nothing to confirm",
+      "if": {
+        "required": [
+          "rv2"
+        ],
+        "properties": {
+          "rv2": {
+            "properties": {
+              "confirm_scope_hits": {
+                "maxItems": 0
+              }
+            },
+            "required": [
+              "confirm_scope_hits"
+            ]
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "u2": {
+            "properties": {
+              "human_confirmation": {
+                "const": "not_required"
+              },
+              "action": {
+                "const": "commit"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "description": "confirm_scope hit -> human_confirmation is obtained or not_obtained",
+      "if": {
+        "required": [
+          "rv2"
+        ],
+        "properties": {
+          "rv2": {
+            "properties": {
+              "confirm_scope_hits": {
+                "minItems": 1
+              }
+            },
+            "required": [
+              "confirm_scope_hits"
+            ]
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "u2": {
+            "properties": {
+              "human_confirmation": {
+                "enum": [
+                  "obtained",
+                  "not_obtained"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "description": "U2.non_interactive: confirm_scope hit without human confirmation -> PR only, tier 2 (reason U2.non_interactive)",
+      "if": {
+        "required": [
+          "u2"
+        ],
+        "properties": {
+          "u2": {
+            "properties": {
+              "human_confirmation": {
+                "const": "not_obtained"
+              }
+            },
+            "required": [
+              "human_confirmation"
+            ]
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "u2": {
+            "properties": {
+              "action": {
+                "const": "pr_only_tier2"
+              }
+            }
+          },
+          "rv4": {
+            "properties": {
+              "tier": {
+                "const": 2
+              },
+              "reasons": {
+                "contains": {
+                  "const": "U2.non_interactive"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "description": "action commit when a human confirmed or nothing needs confirming",
+      "if": {
+        "required": [
+          "u2"
+        ],
+        "properties": {
+          "u2": {
+            "properties": {
+              "human_confirmation": {
+                "enum": [
+                  "obtained",
+                  "not_required"
+                ]
+              }
+            },
+            "required": [
+              "human_confirmation"
+            ]
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "u2": {
+            "properties": {
+              "action": {
+                "const": "commit"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "description": "a non-interactive or unknown run cannot hold a human confirmation",
+      "if": {
+        "required": [
+          "u2"
+        ],
+        "properties": {
+          "u2": {
+            "properties": {
+              "run": {
+                "enum": [
+                  "non_interactive",
+                  "unknown"
+                ]
+              }
+            },
+            "required": [
+              "run"
+            ]
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "u2": {
+            "properties": {
+              "human_confirmation": {
+                "enum": [
+                  "not_required",
+                  "not_obtained"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "description": "PR body without agentive-review.u2 -> unknown run, no confirmation",
+      "if": {
+        "required": [
+          "u2"
+        ],
+        "properties": {
+          "u2": {
+            "properties": {
+              "source": {
+                "const": "pr_body_missing"
+              }
+            },
+            "required": [
+              "source"
+            ]
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "u2": {
+            "properties": {
+              "run": {
+                "const": "unknown"
+              },
+              "human_confirmation": {
+                "enum": [
+                  "not_required",
+                  "not_obtained"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "description": "U2.non_interactive: PR only, tier 2 -> the gate never auto-merges and asks a human (or blocks)",
+      "if": {
+        "required": [
+          "u2",
+          "rv8"
+        ],
+        "properties": {
+          "u2": {
+            "properties": {
+              "action": {
+                "const": "pr_only_tier2"
+              }
+            },
+            "required": [
+              "action"
+            ]
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "rv8": {
+            "properties": {
+              "auto_merge": {
+                "const": false
+              },
+              "decision": {
+                "enum": [
+                  "human_required",
+                  "block"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "description": "tier 0 or 1 auto-merge records the kill-switch scope it was checked against",
+      "if": {
+        "required": [
+          "rv8"
+        ],
+        "properties": {
+          "rv8": {
+            "properties": {
+              "auto_merge": {
+                "const": true
+              }
+            },
+            "required": [
+              "auto_merge"
+            ]
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "rv8": {
+            "required": [
+              "kill_switch"
+            ],
+            "properties": {
+              "kill_switch": {
+                "properties": {
+                  "count": {
+                    "maximum": 1
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "description": "profile ci: every posted finding is verified by RV7 (2026-10-27) and every blocking finding is confirmed",
+      "if": {
+        "properties": {
+          "profile": {
+            "const": "ci"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "findings": {
+            "items": {
+              "required": [
+                "verification"
+              ],
+              "if": {
+                "properties": {
+                  "blocking": {
+                    "const": true
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "verification": {
+                    "properties": {
+                      "verdict": {
+                        "const": "confirmed"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "description": "profile ci requires rv3 and rv4",
+      "if": {
+        "properties": {
+          "profile": {
+            "const": "ci"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "rv3",
+          "rv4"
+        ]
+      }
+    },
+    {
+      "description": "profile precommit runs RV1, RV2, RV5 only",
+      "if": {
+        "properties": {
+          "profile": {
+            "const": "precommit"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "stages_run": {
+            "items": {
+              "enum": [
+                "RV1",
+                "RV2",
+                "RV5"
+              ]
+            }
+          }
+        },
+        "not": {
+          "anyOf": [
+            {
+              "required": [
+                "rv3"
+              ]
+            },
+            {
+              "required": [
+                "rv4"
+              ]
+            },
+            {
+              "required": [
+                "rv7b"
+              ]
+            },
+            {
+              "required": [
+                "rv8"
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "description": "tier 2 in profile ci: RV8 records the ## Explainer check (required, ok or explainer_missing)",
+      "if": {
+        "required": [
+          "rv4",
+          "rv8"
+        ],
+        "properties": {
+          "profile": {
+            "const": "ci"
+          },
+          "rv4": {
+            "properties": {
+              "tier": {
+                "const": 2
+              }
+            }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "rv8": {
+            "required": [
+              "explainer"
+            ],
+            "properties": {
+              "explainer": {
+                "properties": {
+                  "required": {
+                    "const": true
+                  },
+                  "result": {
+                    "enum": [
+                      "ok",
+                      "explainer_missing"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "description": "tier 0 and tier 1: ## Explainer is not required (F3 unchanged)",
+      "if": {
+        "required": [
+          "rv4",
+          "rv8"
+        ],
+        "properties": {
+          "rv4": {
+            "properties": {
+              "tier": {
+                "enum": [
+                  0,
+                  1
+                ]
+              }
+            }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "rv8": {
+            "properties": {
+              "explainer": {
+                "properties": {
+                  "required": {
+                    "const": false
+                  },
+                  "result": {
+                    "const": "not_required"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "description": "CHAIN: an intent or spec PR is always tier 2 with reason chain_approval (RV2 always_human; its merge is the human approval)",
+      "if": {
+        "required": [
+          "rv1",
+          "rv4"
+        ],
+        "properties": {
+          "rv1": {
+            "required": [
+              "chain"
+            ],
+            "properties": {
+              "chain": {
+                "required": [
+                  "stage"
+                ],
+                "properties": {
+                  "stage": {
+                    "enum": [
+                      "intent",
+                      "spec"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "rv4": {
+            "properties": {
+              "tier": {
+                "const": 2
+              },
+              "reasons": {
+                "contains": {
+                  "const": "chain_approval"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "description": "CHAIN: a chain order problem blocks: RV8 decision block (check failure) with reason chain_order",
+      "if": {
+        "required": [
+          "rv1",
+          "rv8"
+        ],
+        "properties": {
+          "rv1": {
+            "required": [
+              "chain"
+            ],
+            "properties": {
+              "chain": {
+                "required": [
+                  "result"
+                ],
+                "properties": {
+                  "result": {
+                    "const": "chain_order"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "rv8": {
+            "properties": {
+              "decision": {
+                "const": "block"
+              },
+              "reasons": {
+                "contains": {
+                  "const": "chain_order"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "description": "REPLYLINE: a confirmed important finding answered with wrong, intentional or not_important instead of a fix -> no auto-merge, human_required (or block) with reason finding_disputed, whoever wrote the reply",
+      "if": {
+        "required": [
+          "findings",
+          "rv8"
+        ],
+        "properties": {
+          "findings": {
+            "contains": {
+              "required": [
+                "severity",
+                "verification",
+                "response"
+              ],
+              "properties": {
+                "severity": {
+                  "const": "important"
+                },
+                "verification": {
+                  "properties": {
+                    "verdict": {
+                      "const": "confirmed"
+                    }
+                  },
+                  "required": [
+                    "verdict"
+                  ]
+                },
+                "response": {
+                  "properties": {
+                    "reason": {
+                      "enum": [
+                        "wrong",
+                        "intentional",
+                        "not_important"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "reason"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "rv8": {
+            "properties": {
+              "auto_merge": {
+                "const": false
+              },
+              "decision": {
+                "enum": [
+                  "human_required",
+                  "block"
+                ]
+              },
+              "reasons": {
+                "contains": {
+                  "const": "finding_disputed"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  ],
+  "description": "In profile ci every posted finding carries an RV7 verification and every blocking finding is confirmed important (refuted/inconclusive, nit and pre_existing findings never block). In profile precommit (RV1, RV2, RV5) RV3, RV4, RV7b, RV7, RV6 and RV8 do not run; rv3 and rv4 are absent. In profile ci RV7b and RV8 output are required; tier 2 never auto-merges; tier 1 auto-merge requires a computed RV7b score, tier1 mode on and no demotion; human_required concludes success with auto-merge off."
+}

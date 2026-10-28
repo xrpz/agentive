@@ -1,0 +1,483 @@
+#!/usr/bin/env python3
+# agentive-unit: rl.bin.agentive-review
+# design: spec.repo_layer.files[f-reviewers].scripts, spec.review_pipeline.profiles, spec.work_loop.ci_ai_review_floor, spec.work_loop.ci_independence_check, spec.review_pipeline.stages[RV8]
+"""agentive review pipeline CLI (python3 >= 3.9 stdlib; library .agents/lib/agentive/review/).
+
+  agentive-review precommit [--run interactive|non_interactive] [--human-confirmation obtained|not_obtained]
+      profile precommit (RV1, RV2, RV5) on `git diff --cached`; writes .agents/state/precommit-review.json and
+      .agents/state/review-report.json. Called by the precommit-review skill (context: fork).
+  agentive-review ci <pr> [--checks F] [--fetch-prior] [--no-tasks] [--post] [--work D]
+      profile ci for the ai-review job: deterministic stages, then LLM tasks for the agent (see TASKS below).
+  agentive-review gate <pr> [--checks F] [--work D] [--apply] [--event E]
+      RV8 for the required check agentive-review-gate: recomputes every deterministic stage from the base commit,
+      reads the LLM outputs of the ai-review work directory (fail-safe when missing), decides, and with --apply
+      writes agentive-review.pipeline into the PR body, labels shadow PRs, opens demotion issues, enables auto-merge.
+  agentive-review independence <pr> [--work D]      CI job agentive-independence
+  agentive-review outer-verbs [--out F]              CI job outer-verbs: runs the required verbs through .agents/bin/verb
+  agentive-review eval --base S --head S --work D    profile ci on a commit range with the working-tree policy
+      (reviewer eval runs; no GitHub access)
+  agentive-review checks --out F [--outer JSON] [--job name=result ...]
+      CI helper: one check list from the outer-verbs results and job results (success|failure|skipped|cancelled)
+  agentive-review merge-group --head-ref REF        the gate on merge_group: the queued PR's recorded gate decision
+      must be pass or human_required for its current head (outer-verbs runs on the merge group commit itself)
+
+TASKS: when an LLM stage has work the command prints `AGENTIVE_REVIEW_TASK id=.. agent=.. input=.. output=..` lines
+and a last line `AGENTIVE_REVIEW=tasks:<n> ... NEXT=...`, and exits 3. Run each task with the named subagent in a fresh
+context, write its JSON reply verbatim to the output path, and run the same command again.
+Exit codes: 0 done, 1 blocked (precommit blocking findings or gate block), 2 error, 3 tasks pending.
+GitHub is read and written with `gh api` (REST); `gh pr merge --auto` is the only gh pr call (gate --apply).
+"""
+import argparse
+import json
+import os
+import subprocess
+import sys
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, os.path.join(HERE, "..", "lib"))
+try:
+    from agentive import common                      # noqa: E402
+    from agentive.review import (config as cfgmod, findings as fmod, github as gh, gitio, independence,  # noqa: E402
+                                 killswitch, pipeline, post, pr_body, util)
+except ImportError as e:                               # pragma: no cover
+    print(f"AGENTIVE_FAIL verb=review exit=2 log=-; NEXT=install python3 >= 3.9 and keep .agents/lib/agentive ({e})")
+    sys.exit(2)
+
+STATE = os.path.join(".agents", "state")
+
+
+def die(msg, nxt, code=2):
+    print(f"AGENTIVE_REVIEW=error {msg}; NEXT={nxt}")
+    sys.exit(code)
+
+
+def repo_root():
+    r = common.repo_root(os.getcwd())
+    if not r:
+        die("not inside a git work tree", "cd into the repository and rerun")
+    return r
+
+
+def no_human():
+    """spec.no_human_run signals visible to a script: AGENTIVE_HEADLESS=1, CI or GITHUB_ACTIONS."""
+    return os.environ.get("AGENTIVE_HEADLESS") == "1" or bool(os.environ.get("CI")) or bool(os.environ.get("GITHUB_ACTIONS"))
+
+
+def ensure_commit(repo, sha):
+    if not gitio.ok(repo, "cat-file", "-e", sha + "^{commit}"):
+        subprocess.run(["git", "-C", repo, "fetch", "--no-tags", "--quiet", "origin", sha], capture_output=True)
+    if not gitio.ok(repo, "cat-file", "-e", sha + "^{commit}"):
+        die(f"commit {sha} is not in this clone", "checkout with fetch-depth: 0 (actions/checkout) or git fetch origin " + sha)
+
+
+def read_checks(path, source="ci"):
+    if not path:
+        return []
+    data = common.read_json(path, [])
+    out = []
+    for c in data if isinstance(data, list) else []:
+        if isinstance(c, dict) and c.get("name") and c.get("status") in ("pass", "fail", "skipped"):
+            out.append({"name": str(c["name"]), "status": c["status"], "source": source})
+    return out
+
+
+def write_report(repo, work, report):
+    rep = pipeline.strip_private(report)
+    common.write_json(os.path.join(work, "review-report.json"), rep)
+    common.write_json(os.path.join(repo, STATE, "review-report.json"), rep)
+    return rep
+
+
+def print_pending(p):
+    for ln in p.lines:
+        print(ln)
+    sys.exit(3)
+
+
+# ---------------------------------------------------------------- precommit
+def cmd_precommit(a):
+    repo = repo_root()
+    base = gitio.git(repo, "rev-parse", "--verify", "-q", "HEAD", check=False).strip() or pipeline.EMPTY_TREE
+    tree = gitio.git(repo, "write-tree").strip()
+    work = a.work or os.path.join(repo, STATE, "review", f"precommit-{tree[:12]}")
+    checks = []
+    vj = common.read_json(os.path.join(repo, STATE, "verify.json"))
+    if isinstance(vj, dict) and base != pipeline.EMPTY_TREE and len(str(vj.get("head_sha", ""))) >= 7 and base.startswith(str(vj["head_sha"])):
+        for name, v in (vj.get("verbs") or {}).items():
+            checks.append({"name": name, "status": "pass" if v.get("ok") else "fail", "source": "verify.json"})
+        for name in vj.get("pending") or []:
+            checks.append({"name": name, "status": "skipped", "source": "verify.json"})
+    run = a.run or ("non_interactive" if no_human() else "interactive")
+    hc = a.human_confirmation
+    if hc == "obtained" and run != "interactive":
+        die("human confirmation cannot be obtained in a run with no human present", "open a PR instead (/pr); tier 2 is forced")
+    policy = (lambda p: gitio.show(repo, base, p)) if base != pipeline.EMPTY_TREE else (lambda p: _read(repo, p))
+    ctx = pipeline.Ctx(repo, "precommit", base, None, work, policy=policy, checks=checks,
+                       u2_local={"run": run, "human_confirmation": hc}, rerun_cmd=_rerun(a, "precommit"))
+    try:
+        report, extras = pipeline.run(ctx)
+    except pipeline.Pending as p:
+        print_pending(p)
+    rep = write_report(repo, work, report)
+    rec = pipeline.precommit_record(rep, extras)
+    common.write_json(os.path.join(repo, STATE, "precommit-review.json"), rec)
+    u2 = rec["u2"]
+    if rec["blocking"]:
+        print(f"AGENTIVE_PRECOMMIT=blocked blocking={len(rec['blocking'])} file={STATE}/precommit-review.json; "
+              f"NEXT=fix every blocking finding (nits need no action), rerun verify, then rerun this command")
+        return 1
+    if not rec["checks_ok"]:
+        print(f"AGENTIVE_PRECOMMIT=blocked checks=not_ok file={STATE}/precommit-review.json; NEXT=run the verify skill "
+              f"(.agents/bin/verb) on the current HEAD so .agents/state/verify.json is fresh and green, then rerun")
+        return 1
+    if u2["action"] == "pr_only_tier2":
+        nxt = ("ask the human to confirm the change to " + ", ".join(sorted({h['category'] for h in rec['confirm_scope_hits']}))
+               + " (U2), then rerun with --human-confirmation obtained") if run == "interactive" else \
+            "do not commit to the default branch and do not merge: commit on a work branch only to open a PR (/pr); tier 2 is forced"
+        print(f"AGENTIVE_PRECOMMIT=confirm u2={u2['run']}/{u2['human_confirmation']} file={STATE}/precommit-review.json; NEXT={nxt}")
+        return 0
+    print(f"AGENTIVE_PRECOMMIT=commit nits={len(rec['nits'])} trust_boundary_hits={len(rec['trust_boundary_hits'])}; "
+          f"NEXT=commit (RV2 hits are handled at the PR by a human)")
+    return 0
+
+
+def _read(repo, p):
+    try:
+        with open(os.path.join(repo, p), encoding="utf-8") as f:
+            return f.read()
+    except OSError:
+        return None
+
+
+def _rerun(a, sub):
+    parts = [".agents/bin/agentive-review", sub] + ([str(a.pr)] if getattr(a, "pr", None) else [])
+    if getattr(a, "checks", None):
+        parts += ["--checks", a.checks]
+    if getattr(a, "work", None):
+        parts += ["--work", a.work]
+    if sub == "eval":
+        parts += ["--base", a.base, "--head", a.head]
+    return " ".join(parts)
+
+
+# ---------------------------------------------------------------- CI context
+def ci_context(a, repo, allow_tasks):
+    slug = a.repo_slug or gh.slug_from_env(repo)
+    if a.pr_json:
+        pr = common.read_json(a.pr_json)
+    else:
+        if not slug:
+            die("no repository slug", "set GITHUB_REPOSITORY=owner/name or pass --repo-slug")
+        pr = gh.pr_context(slug, a.pr)
+    comments = common.read_json(a.comments_json, []) if a.comments_json else (gh.review_comments(slug, a.pr) if slug and not a.pr_json else [])
+    ensure_commit(repo, pr["base_sha"])
+    ensure_commit(repo, pr["head_sha"])
+    base = gitio.merge_base(repo, pr["base_sha"], pr["head_sha"]) or pr["base_sha"]
+    work = a.work or os.path.join(repo, STATE, "review", f"ci-{pr['head_sha'][:12]}")
+    if getattr(a, "fetch_prior", False) and slug and not os.path.isdir(os.path.join(work, "tasks")):
+        try:
+            gh.download_artifact(slug, f"agentive-review-{pr['head_sha']}", work)
+        except gh.GhError as e:
+            print(f"note: no earlier review artifact for this head ({e})")
+    checks = read_checks(a.checks)
+    prior = common.read_json(os.path.join(work, "review-report.json")) or {}
+    have = {c["name"] for c in checks}
+    for c in ((prior.get("rv1") or {}).get("checks") or []):
+        if c.get("name") not in have:
+            checks.append(c)
+    policy_rev = pr["base_sha"]
+    ctx = pipeline.Ctx(repo, "ci", base, pr["head_sha"], work, policy=lambda p: gitio.show(repo, policy_rev, p), pr=pr,
+                       comments=comments, checks=checks, allow_tasks=allow_tasks, trigger=_trigger(a),
+                       full_review="agentive:full-review" in (pr.get("labels") or []), rerun_cmd=_rerun(a, a.cmd))
+    return ctx, slug, pr
+
+
+def _trigger(a):
+    ev = getattr(a, "event", None) or os.environ.get("GITHUB_EVENT_NAME")
+    action = os.environ.get("AGENTIVE_EVENT_ACTION")
+    if ev == "pull_request":
+        return action if action in ("opened", "synchronize", "reopened", "edited") else "synchronize"
+    if ev in ("merge_group", "pull_request_review_comment"):
+        return ev
+    return None
+
+
+def body_pipeline(report, artifact_ref=None):
+    rv8 = report["rv8"]
+    pipe = {
+        "classification": {"classes": report["rv3"]["classes"], "method": report["rv3"]["method"]},
+        "tier": {"value": report["rv4"]["tier"], "reasons": report["rv4"]["reasons"],
+                 "trust_boundary_hits": util.uniq(h["path"] for h in report["rv2"]["hits"])},
+        "verified_findings": [{k: v for k, v in {"id": f["id"], "severity": f["severity"], "blocking": f["blocking"],
+                                                 "verdict": (f.get("verification") or {}).get("verdict", "inconclusive"),
+                                                 "file": f["file"], "line": f["line"], "summary": f["summary"],
+                                                 "reviewers": f["reviewers"], "trigger": f["trigger"]}.items()}
+                              for f in report.get("findings") or []],
+        "risk_score": {k: v for k, v in report["rv7b"].items() if k in ("score", "reason", "preset", "human_if_score_gt", "config_sha256")},
+        "gate": {"decision": rv8["decision"], "check": "agentive-review-gate", "auto_merge": rv8["auto_merge"],
+                 "demoted": bool(rv8.get("demoted")), "shadow": bool(rv8.get("shadow_would_auto_merge")), "head_sha": rv8["head_sha"]},
+    }
+    if artifact_ref:
+        pipe["gate"]["report_ref"] = artifact_ref
+    return pipe
+
+
+def ci_reviews(extras):
+    out = []
+    for r in extras.get("reviews") or []:
+        e = {"role": r["role"], "tool": "claude_code", "model": "inherit", "session_id": r["session_id"], "context": "fresh",
+             "source": "ci", "verdict": r["verdict"]}
+        if r.get("reviewer_id"):
+            e["reviewer_id"] = r["reviewer_id"]
+        out.append(e)
+    return out
+
+
+# ---------------------------------------------------------------- ci (ai-review job)
+def cmd_ci(a):
+    repo = repo_root()
+    ctx, slug, pr = ci_context(a, repo, allow_tasks=not a.no_tasks)
+    try:
+        report, extras = pipeline.run(ctx)
+    except pipeline.Pending as p:
+        print_pending(p)
+    rep = write_report(repo, ctx.work_dir, report)
+    common.write_json(os.path.join(ctx.work_dir, "reviews.json"), ci_reviews(extras))
+    posted_now = 0
+    if a.post and slug:
+        posted_ids = set(extras["posted"])
+        for f in fmod.to_post(rep["findings"], posted_ids):
+            try:
+                gh.create_review_comment(slug, pr["number"], pr["head_sha"], f["file"], f["line"], post.finding_comment(f, rep["review_round"]["round"]))
+                posted_now += 1
+            except gh.GhError as e:
+                print(f"note: could not post {f['id']}: {e}")
+        try:
+            gh.upsert_issue_comment(slug, pr["number"], post.SUMMARY_MARKER, post.summary_comment(rep, posted_now, extras))
+        except gh.GhError as e:
+            print(f"note: could not post the summary comment: {e}")
+    print(f"AGENTIVE_REVIEW=done profile=ci tier={rep['rv4']['tier']} findings={len(rep['findings'])} posted={posted_now} "
+          f"report={os.path.relpath(os.path.join(ctx.work_dir, 'review-report.json'), repo)}; NEXT=the agentive-review-gate job decides")
+    return 0
+
+
+# ---------------------------------------------------------------- gate (agentive-review-gate job)
+def cmd_gate(a):
+    repo = repo_root()
+    ctx, slug, pr = ci_context(a, repo, allow_tasks=False)
+    if a.apply and slug:
+        ctx.kill_switch = lambda tier: _kill_switch(repo, slug, pr, tier)
+    report, extras = pipeline.run(ctx)
+    rep = write_report(repo, ctx.work_dir, report)
+    rv8 = rep["rv8"]
+    lines = [f"agentive-review-gate: {rv8['decision']} (tier {rep['rv4']['tier']}, auto_merge {rv8['auto_merge']})"] + \
+            [f"- {r}" for r in rv8["reasons"]]
+    if os.environ.get("GITHUB_STEP_SUMMARY"):
+        with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as f:
+            f.write("\n".join(lines) + "\n")
+    print("\n".join(lines))
+    if a.apply and slug:
+        _apply(slug, pr, rep, extras)
+    nxt = {"block": (rv8.get("explainer") or {}).get("next_action") if "explainer_missing" in rv8.get("reason_codes", [])
+           else "fix the blocking reasons above and push (or answer each finding with an agentive-reply line)",
+           "human_required": "a human reviews and merges (auto-merge stays off)",
+           "pass": "GitHub merges once every merge requirement is met" if rv8["auto_merge"] else "a human merges"}[rv8["decision"]]
+    print(f"AGENTIVE_GATE={rv8['decision']} tier={rep['rv4']['tier']} reasons={','.join(rv8.get('reason_codes') or [])}; NEXT={nxt}")
+    return 1 if rv8["decision"] == "block" else 0
+
+
+def _kill_switch(repo, slug, pr, tier):
+    import datetime
+    now = datetime.datetime.now(datetime.timezone.utc)
+    since = now - datetime.timedelta(days=killswitch.WINDOW_DAYS + 1)
+    issues = gh.demotion_issues(slug, killswitch.LABEL)
+    merged = gh.merged_prs(slug, pr["base_ref"], since.strftime("%Y-%m-%dT%H:%M:%SZ"))
+    ref = f"origin/{pr['base_ref']}"
+    subprocess.run(["git", "-C", repo, "fetch", "--no-tags", "--quiet", "origin", pr["base_ref"]], capture_output=True)
+    reverts = gitio.log_messages(repo, ref if gitio.ok(repo, "rev-parse", "--verify", ref) else pr["base_sha"], int(since.timestamp()))
+    return killswitch.evaluate(tier, pr["author"], now, merged, reverts, issues)
+
+
+def _apply(slug, pr, rep, extras):
+    rv8 = rep["rv8"]
+    run_url = None
+    if os.environ.get("GITHUB_RUN_ID"):
+        run_url = f"{os.environ.get('GITHUB_SERVER_URL', 'https://github.com')}/{slug}/actions/runs/{os.environ['GITHUB_RUN_ID']}"
+    new_body = pr_body.with_pipeline(pr["body"], body_pipeline(rep, run_url), rep["review_round"]["round"], ci_reviews(extras))
+    try:
+        if new_body is not None and new_body != pr["body"]:
+            gh.patch_pr_body(slug, pr["number"], new_body)     # GITHUB_TOKEN edits start no workflow run [S39]
+    except gh.GhError as e:
+        print(f"note: could not update the PR body: {e}")
+    ks = extras.get("kill_switch_result") or {}
+    try:
+        if ks.get("open_issue"):
+            t = rv8["kill_switch"]["tier"]
+            title, body = killswitch.issue_text(t, rv8["kill_switch"]["source"], ks["count"], ks.get("prs") or [])
+            gh.create_issue(slug, title, body, [killswitch.LABEL])
+        if rv8.get("shadow_would_auto_merge"):
+            gh.add_labels(slug, pr["number"], ["agentive:shadow-auto-merge"])
+        if rv8["auto_merge"]:
+            gh.enable_auto_merge(slug, pr["number"])
+    except gh.GhError as e:
+        print(f"note: gate side effect failed: {e}")
+
+
+# ---------------------------------------------------------------- independence
+def cmd_independence(a):
+    repo = repo_root()
+    slug = a.repo_slug or gh.slug_from_env(repo)
+    pr = common.read_json(a.pr_json) if a.pr_json else gh.pr_context(slug, a.pr)
+    work = a.work or os.path.join(repo, STATE, "review", f"ci-{pr['head_sha'][:12]}")
+    if slug and not a.pr_json and not os.path.exists(os.path.join(work, "reviews.json")):
+        try:
+            gh.download_artifact(slug, f"agentive-review-{pr['head_sha']}", work)
+        except gh.GhError:
+            pass
+    ok, probs = independence.check(pr["body"], common.read_json(os.path.join(work, "reviews.json"), []))
+    for p in probs:
+        print(f"- {p}")
+    print(f"AGENTIVE_INDEPENDENCE={'ok' if ok else 'fail'}; NEXT=" + ("none" if ok else
+          "run /pr to write the PR body (## Verification, ## Risk, ## How to revert and the agentive-review block) and keep the reviewer in a fresh context"))
+    return 0 if ok else 1
+
+
+# ---------------------------------------------------------------- outer-verbs
+def cmd_outer_verbs(a):
+    repo = repo_root()
+    manifest = cfgmod.load_manifest(lambda p: _read(repo, p)).value
+    conf = cfgmod.load_project_config(lambda p: _read(repo, p)).value
+    require = ((conf.get("stages") or {}).get("RV1") or {}).get("require_checks") or ["lint", "typecheck", "test"]
+    verbs = manifest.get("verbs") or {}
+    verb = os.path.join(repo, ".agents", "bin", "verb")
+    results, failed = [], False
+
+    def run_verb(name):
+        r = subprocess.run([verb, name], cwd=repo)
+        return r.returncode == 0
+
+    setup = verbs.get("setup")
+    if isinstance(setup, dict) and setup.get("cmd"):
+        if not run_verb("setup"):
+            results.append({"name": "setup", "status": "fail"})
+            failed = True
+    for name in [v for v in require if v in ("lint", "typecheck", "test", "build")]:
+        v = verbs.get(name)
+        if failed or not isinstance(v, dict) or v.get("status") == "pending" or not v.get("cmd"):
+            results.append({"name": name, "status": "skipped"})
+            continue
+        ok = run_verb(name)
+        failed = failed or not ok
+        results.append({"name": name, "status": "pass" if ok else "fail"})
+    if a.out:
+        common.write_json(a.out, results)
+    if os.environ.get("GITHUB_OUTPUT"):
+        with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as f:
+            f.write("results=" + json.dumps(results, separators=(",", ":")) + "\n")
+    print("AGENTIVE_OUTER_VERBS=" + ",".join(f"{r['name']}:{r['status']}" for r in results) +
+          ("; NEXT=reproduce the failing verb locally with .agents/bin/verb <verb>" if failed else "; NEXT=none"))
+    return 1 if failed else 0
+
+
+# ---------------------------------------------------------------- eval (reviewer eval headless runs)
+def cmd_eval(a):
+    repo = repo_root()
+    ensure_commit(repo, a.base)
+    ensure_commit(repo, a.head)
+    base = gitio.merge_base(repo, a.base, a.head) or a.base
+    ctx = pipeline.Ctx(repo, "ci", base, a.head, a.work, policy=lambda p: _read(repo, p), pr=None, comments=[],
+                       checks=[], allow_tasks=not a.no_tasks, rerun_cmd=_rerun(a, "eval"))
+    try:
+        report, _ = pipeline.run(ctx)
+    except pipeline.Pending as p:
+        print_pending(p)
+    rep = pipeline.strip_private(report)
+    common.write_json(os.path.join(a.work, "review-report.json"), rep)
+    print(f"AGENTIVE_REVIEW=done profile=eval findings={len(rep['findings'])} report={os.path.join(a.work, 'review-report.json')}; NEXT=none")
+    return 0
+
+
+# ---------------------------------------------------------------- CI helpers
+def cmd_checks(a):
+    out = []
+    if a.outer:
+        try:
+            for c in json.loads(a.outer):
+                if c.get("name") and c.get("status") in ("pass", "fail", "skipped"):
+                    out.append({"name": c["name"], "status": c["status"]})
+        except ValueError:
+            die("--outer is not JSON", "pass the outer-verbs job output results")
+    for item in a.job or []:
+        name, _, res = item.partition("=")
+        st = {"success": "pass", "pass": "pass", "failure": "fail", "fail": "fail", "cancelled": "fail"}.get(res)
+        if st:                                  # skipped or empty: the job did not run in this event; keep the earlier result
+            out.append({"name": name, "status": st})
+    common.write_json(a.out, out)
+    print(f"AGENTIVE_CHECKS={','.join(c['name'] + ':' + c['status'] for c in out) or 'none'}; NEXT=pass --checks {a.out}")
+    return 0
+
+
+def cmd_merge_group(a):
+    import re
+    repo = repo_root()
+    slug = a.repo_slug or gh.slug_from_env(repo)
+    m = re.search(r"/pr-(\d+)-[0-9a-f]+$", a.head_ref or "")
+    if not m:
+        die(f"cannot read the PR number from {a.head_ref!r}", "check the merge_group head_ref format")
+    pr = gh.pr_context(slug, int(m.group(1)))
+    blk, _ = pr_body.block(pr["body"])
+    gate = ((blk or {}).get("pipeline") or {}).get("gate") or {}
+    ok = gate.get("decision") in ("pass", "human_required") and str(gate.get("head_sha", "")) == pr["head_sha"]
+    print(f"AGENTIVE_GATE={'pass' if ok else 'block'} merge_group pr={pr['number']} recorded={gate.get('decision')}@{str(gate.get('head_sha'))[:12]}; "
+          f"NEXT={'none' if ok else 'the PR needs a gate result for its current head: push or re-run the agentive-review workflow'}")
+    return 0 if ok else 1
+
+
+def main(argv):
+    ap = argparse.ArgumentParser(prog="agentive-review", description=__doc__.split("\n\n")[0])
+    sub = ap.add_subparsers(dest="cmd", required=True)
+    p = sub.add_parser("precommit")
+    p.add_argument("--run", choices=["interactive", "non_interactive"])
+    p.add_argument("--human-confirmation", choices=["obtained", "not_obtained"])
+    p.add_argument("--work")
+    for name in ("ci", "gate", "independence"):
+        p = sub.add_parser(name)
+        p.add_argument("pr", type=int)
+        p.add_argument("--work")
+        p.add_argument("--repo-slug")
+        p.add_argument("--pr-json", help="PR context JSON instead of gh api (tests)")
+        p.add_argument("--comments-json", help="review comments JSON instead of gh api (tests)")
+        if name in ("ci", "gate"):
+            p.add_argument("--checks", help="JSON list [{name, status: pass|fail|skipped}] of CI check results")
+            p.add_argument("--event")
+            p.add_argument("--fetch-prior", action="store_true", help="download the ai-review artifact of this head")
+        if name == "ci":
+            p.add_argument("--no-tasks", action="store_true", help="finish fail-safe instead of asking for LLM tasks")
+            p.add_argument("--post", action="store_true", help="post inline findings and the summary comment")
+        if name == "gate":
+            p.add_argument("--apply", action="store_true", help="write the PR body, labels, demotion issue, auto-merge")
+    p = sub.add_parser("outer-verbs")
+    p.add_argument("--out")
+    p = sub.add_parser("checks")
+    p.add_argument("--out", required=True)
+    p.add_argument("--outer")
+    p.add_argument("--job", action="append")
+    p = sub.add_parser("merge-group")
+    p.add_argument("--head-ref", required=True)
+    p.add_argument("--repo-slug")
+    p = sub.add_parser("eval")
+    p.add_argument("--base", required=True)
+    p.add_argument("--head", required=True)
+    p.add_argument("--work", required=True)
+    p.add_argument("--no-tasks", action="store_true")
+    a = ap.parse_args(argv)
+    fn = {"precommit": cmd_precommit, "ci": cmd_ci, "gate": cmd_gate, "independence": cmd_independence,
+          "outer-verbs": cmd_outer_verbs, "eval": cmd_eval, "checks": cmd_checks, "merge-group": cmd_merge_group}[a.cmd]
+    try:
+        return fn(a)
+    except (gitio.GitError, gh.GhError) as e:
+        die(str(e).splitlines()[0][:300], "check the repository state and gh authentication (GH_TOKEN), then rerun")
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

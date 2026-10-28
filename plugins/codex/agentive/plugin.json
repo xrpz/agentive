@@ -1,0 +1,17 @@
+{
+  "name": "agentive",
+  "version": "0.1.0",
+  "description": "AI-native SDLC and codebase framework: Claude Code implements, Codex reviews. /agentive:init configures a repo from its own evidence.",
+  "author": {
+    "name": "xrpz"
+  },
+  "license": "MIT",
+  "keywords": [
+    "ai-native",
+    "sdlc",
+    "code-review",
+    "agents"
+  ],
+  "homepage": "https://github.com/xrpz/agentive",
+  "repository": "https://github.com/xrpz/agentive"
+}

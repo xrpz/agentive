@@ -1,0 +1,56 @@
+# agentive-unit: units.review
+# design: docs/IMPLEMENTATION.md §3 (units), §7 (ownership: D)
+# Owner D: review pipeline, CI workflows, reviewer prompts, reviewer eval. The run-time modules
+# .agents/lib/agentive/review/** and .agents/lib/agentive/lint/** are files of A's unit lib.agentive (one module = one
+# owner, docs/IMPLEMENTATION.md §7); their headers name lib.agentive and say "owner D".
+owner: D
+units:
+  # ---------------------------------------------------------------- user-repo CI (f-ci)
+  - id: rl.ci.agentive-review
+    kind: repo_layer
+    src: src/repo-layer/dot-github/workflows/agentive-review.yml
+    f: f-ci
+    confirm_scope: [ci]
+    refs: ["spec.repo_layer.files[f-ci]", "spec.work_loop.ci_ai_review_floor", "spec.work_loop.ci_independence_check", "spec.review_pipeline.stages[RV8]", "spec.review_pipeline.gate_protection", "spec.repo_checks.dependency_review", "spec.outer_loop.triggers"]
+    note: "jobs outer-verbs, dependency-review, ai-review, agentive-independence, agentive-review-gate (required check)"
+  - id: rl.ci.agentive-lint
+    kind: repo_layer
+    src: src/repo-layer/dot-github/workflows/agentive-lint.yml
+    f: f-ci
+    confirm_scope: [ci]
+    refs: ["spec.repo_layer.files[f-ci]", "spec.repo_checks.agentive_lint"]
+  - id: rl.ci.reviewer-eval
+    kind: repo_layer
+    src: src/repo-layer/dot-github/workflows/reviewer-eval.yml
+    f: f-ci
+    confirm_scope: [ci]
+    refs: ["spec.repo_layer.files[f-ci]", "spec.review_pipeline.reviewer_eval.ci", "spec.outer_loop.triggers"]
+  # ---------------------------------------------------------------- repo-wide scripts
+  - id: rl.bin.agentive-review
+    kind: repo_layer
+    src: src/repo-layer/dot-agents/bin/agentive-review
+    refs: ["spec.repo_layer.files[f-reviewers]", "spec.review_pipeline.profiles", "spec.review_pipeline.stage_order", "spec.work_loop.precommit_review"]
+    note: "RV1-RV8 CLI: precommit | ci | gate | independence | outer-verbs | checks | merge-group | eval; library .agents/lib/agentive/review/"
+  - id: rl.bin.agentive-lint
+    kind: repo_layer
+    src: src/repo-layer/dot-agents/bin/agentive-lint
+    f: f-lint
+    refs: ["spec.repo_layer.files[f-lint]", "spec.repo_checks.agentive_lint"]
+  - id: rl.bin.agentive-reviewer-eval
+    kind: repo_layer
+    src: src/repo-layer/dot-agents/bin/agentive-reviewer-eval
+    refs: ["spec.review_pipeline.reviewer_eval", "spec.review_pipeline.reviewer_eval.ci", "spec.context_management.headless.standard_cmd"]
+    note: "[설계 판단] name (docs/IMPLEMENTATION.md §7, §8)"
+  # ---------------------------------------------------------------- reviewer prompts (f-reviewers; B renders them)
+  - id: rl.agents.reviewers
+    kind: repo_layer
+    src: src/repo-layer/dot-agents/agents/
+    f: f-reviewers
+    refs: ["spec.repo_layer.files[f-reviewers]", "spec.review_pipeline.stages[RV5]", "spec.review_pipeline.stages[RV7]", "spec.review_pipeline.stages[RV6]", "spec.review_pipeline.stages[RV3]", "spec.review_pipeline.stages[RV4].raise_only_check", "spec.context_management.subagent_model"]
+    note: "one source per role; B renders .claude/agents/<id>.md (model: inherit) and .codex/agents/<id>.toml"
+  # ---------------------------------------------------------------- reviewer eval case format (f-reviewer-eval)
+  - id: rl.evals.reviewer-readme
+    kind: repo_layer
+    src: src/repo-layer/evals/reviewer/README.md
+    refs: ["spec.repo_layer.files[f-reviewer-eval]", "spec.review_pipeline.reviewer_eval", "spec.review_pipeline.reviewer_eval.scoring", "contracts[reviewer-eval-case]"]
+    note: "[설계 판단] the case format doc next to the cases; init and update write no case (f-reviewer-eval)"

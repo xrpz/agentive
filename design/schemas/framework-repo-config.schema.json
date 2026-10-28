@@ -1,0 +1,37 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://fw.local/schemas/framework-repo-config.schema.json",
+  "title": "framework.yaml in the framework repo: plugin name and framework-level user decisions",
+  "description": "Split from framework-config on 2026-10-27 (N-D8). source_format, selftest.sample_repos, versioning.mode, codex.distribution and the other knobs without an implemented alternative are constants.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "plugin": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "default": "agentive"
+        },
+        "marketplace_name": {
+          "type": "string"
+        }
+      },
+      "description": "D14"
+    },
+    "decisions": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "framework-level user-owned decisions (framework repo only): U3 author confirmation scope before commit in a local Claude Code editing session (decided B on 2026-10-14 with confirm_scope and self_tests), U4 review criteria files (decided C on 2026-10-14: one file code_review.md referenced from AGENTS.md, REVIEW.md copy opt-in via review.managed_code_review_copy, asked at init as a plain yes/no with default No since C-058). U5 (interim behavior while U2 is null) is obsolete since U2 was decided on 2026-10-14 and is not recorded here",
+      "properties": {
+        "U3": {
+          "$ref": "decisions.schema.json#/$defs/u3"
+        },
+        "U4": {
+          "$ref": "decisions.schema.json#/$defs/u4"
+        }
+      }
+    }
+  }
+}

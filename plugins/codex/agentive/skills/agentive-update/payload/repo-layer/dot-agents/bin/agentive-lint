@@ -1,0 +1,72 @@
+#!/usr/bin/env python3
+# agentive-unit: rl.bin.agentive-lint
+# design: spec.repo_checks.agentive_lint, spec.repo_layer.files[f-lint], spec.review_pipeline.stages[RV7b].customization.print
+"""agentive-lint: every agentive repo check in one script (CI job agentive-lint).
+
+  agentive-lint ci                      size, provenance, check-tags, persist, skills, lock (+ links when enabled)
+  agentive-lint <sub> [<sub> ...]       size | provenance | check-tags | persist | skills | lock | links
+  agentive-lint rubric --effective      print the effective rubric (.agents/rubric.yaml + .agents/custom/.agents/rubric.yaml)
+                                        and its sha256 (not a CI check)
+One `LINT <sub> <path>[:<line>]: <what>. NEXT: <fix>` line per problem, then `AGENTIVE_LINT=ok|fail:<subs>; NEXT=...`.
+Exit 0 ok, 1 problems, 2 usage or environment error.
+"""
+import os
+import sys
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, os.path.join(HERE, "..", "lib"))
+try:
+    from agentive import ayaml, common                   # noqa: E402
+    from agentive.lint import checks                     # noqa: E402
+    from agentive.review import config as cfgmod         # noqa: E402
+except ImportError as e:                                   # pragma: no cover
+    print(f"AGENTIVE_FAIL verb=lint exit=2 log=-; NEXT=install python3 >= 3.9 and keep .agents/lib/agentive ({e})")
+    sys.exit(2)
+
+SUBS = ["size", "provenance", "check-tags", "persist", "skills", "lock", "links"]
+
+
+def main(argv):
+    repo = common.repo_root(os.getcwd())
+    if not repo:
+        print("AGENTIVE_LINT=error not a git work tree; NEXT=cd into the repository")
+        return 2
+    if argv[:1] == ["rubric"]:
+        if "--effective" not in argv:
+            print("AGENTIVE_LINT=error usage; NEXT=agentive-lint rubric --effective")
+            return 2
+        eff = cfgmod.effective_rubric(lambda p: checks.read(repo, p))
+        if not eff.valid:
+            for p in eff.problems:
+                print(f"LINT rubric {p}. NEXT: fix the override against the rubric schema")
+            print("AGENTIVE_LINT=fail:rubric; NEXT=fix .agents/custom/.agents/rubric.yaml (tier 1 goes to a human until it validates)")
+            return 1
+        sys.stdout.write(ayaml.dumps(eff.value))
+        print(f"sha256: {cfgmod.rubric_sha256(eff.value)}")
+        return 0
+    subs = argv or ["ci"]
+    if subs == ["ci"]:
+        subs = SUBS[:-1] + (["links"] if checks.links_enabled(repo) else [])
+    bad = [s for s in subs if s not in SUBS]
+    if bad:
+        print(f"AGENTIVE_LINT=error unknown subcommand {bad}; NEXT=use one of {SUBS}, ci, or rubric --effective")
+        return 2
+    files = checks.tracked(repo)
+    probs = []
+    for s in subs:
+        if s == "check-tags":
+            probs += checks.check_tags(repo, files, checks.generated_paths(repo))
+        else:
+            probs += getattr(checks, s.replace("-", "_"))(repo, files)
+    for p in probs:
+        print(p)
+    if probs:
+        failed = sorted({p.sub for p in probs})
+        print(f"AGENTIVE_LINT=fail:{','.join(failed)}; NEXT=fix the LINT lines above, then rerun .agents/bin/agentive-lint {' '.join(argv) or 'ci'}")
+        return 1
+    print(f"AGENTIVE_LINT=ok ({','.join(subs)}); NEXT=none")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

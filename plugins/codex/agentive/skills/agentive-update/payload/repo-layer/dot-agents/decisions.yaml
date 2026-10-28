@@ -1,0 +1,22 @@
+# agentive-unit: rl.decisions
+# design: spec.repo_layer.files[f-decisions], contracts[decisions], spec.work_loop.merge.auto_merge_default, spec.work_loop.precommit_review.final_confirmation, spec.work_loop.merge.numbers
+# Project decisions, all decided by the user. /agentive:init writes them and asks nothing. Read by RV8 (U1, U6) and the commit procedure (U2).
+# A change here is review config: a human confirms it before commit (U2 confirm_scope review_config) and its PR is tier 2.
+U1:
+  value: C
+  decided_by: user
+  decided_at: "2026-10-14T00:00:00Z"
+  conditions: [U1.a, U1.c, U1.d]
+  note: "tier 0 and tier 1 may auto-merge, tier 2 never. U1.a tier 1 also needs rubric score <= human_if_score_gt; U1.c kill switch per tier and source; U1.d tier 1 starts in shadow mode (revised 2026-10-27)"
+U2:
+  value: B
+  decided_by: user
+  decided_at: "2026-10-14T00:00:00Z"
+  confirm_scope: [hooks, permissions, ci, claude_settings, codex_dir, review_config]
+  non_interactive: pr_only_tier2
+  note: "a human confirms before commit only for these categories; with no human present such a change is never committed to the default branch or merged, only opened as a PR that is forced to tier 2"
+U6:
+  value: "agentive:rubric@1"
+  decided_by: user
+  decided_at: "2026-10-15T00:00:00Z"
+  note: "rubric preset in .agents/rubric.yaml; change it only through .agents/custom/.agents/rubric.yaml"

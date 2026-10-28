@@ -1,0 +1,163 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://fw.local/schemas/rubric.schema.json",
+  "title": ".agents/rubric.yaml (preset, generated) and .agents/custom/.agents/rubric.yaml (project override): the RV7b binary rubric (U6)",
+  "description": "U6 decided 2026-10-15: preset agentive:rubric@1 = spread 24, size 24, incident_history 24, change_type 14, recent_churn 14, binary scoring, score > 28 -> human. The override extends the preset, holds only what changes, is merged by item id, and switches an item off with enabled: false. No personal layer. A rubric change is tier 2 and a U2 confirmation target. An override that fails validation sends tier 1 to a human (tier 0 still auto-merges). `.agents/bin/agentive-lint rubric --effective` prints the effective rubric and its sha256.",
+  "oneOf": [
+    {
+      "title": "preset",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "preset",
+        "scoring",
+        "human_if_score_gt",
+        "items"
+      ],
+      "properties": {
+        "preset": {
+          "type": "string",
+          "pattern": "^agentive:rubric@[0-9]+$"
+        },
+        "scoring": {
+          "const": "binary"
+        },
+        "human_if_score_gt": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "shared_globs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "**/shared/**",
+            "**/common/**"
+          ],
+          "description": "design judgment: paths that count as shared for the spread item"
+        },
+        "items": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "allOf": [
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "id"
+                ],
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "pattern": "^[a-z][a-z0-9_]*$"
+                  },
+                  "hit": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "the condition RV7b checks (deterministic RV1/RV3 inputs only)"
+                  },
+                  "input": {
+                    "enum": [
+                      "modules_touched_or_shared_path",
+                      "changed_lines",
+                      "incident_history_90d",
+                      "change_class",
+                      "recent_churn_30d"
+                    ]
+                  },
+                  "weight": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 100
+                  },
+                  "enabled": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "an override switches an item off with enabled: false"
+                  }
+                }
+              },
+              {
+                "required": [
+                  "id",
+                  "hit",
+                  "input",
+                  "weight"
+                ]
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "override",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "extends"
+      ],
+      "properties": {
+        "extends": {
+          "type": "string",
+          "pattern": "^agentive:rubric@[0-9]+$"
+        },
+        "human_if_score_gt": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "shared_globs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9_]*$"
+              },
+              "hit": {
+                "type": "string",
+                "minLength": 1,
+                "description": "the condition RV7b checks (deterministic RV1/RV3 inputs only)"
+              },
+              "input": {
+                "enum": [
+                  "modules_touched_or_shared_path",
+                  "changed_lines",
+                  "incident_history_90d",
+                  "change_class",
+                  "recent_churn_30d"
+                ]
+              },
+              "weight": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 100
+              },
+              "enabled": {
+                "type": "boolean",
+                "default": true,
+                "description": "an override switches an item off with enabled: false"
+              }
+            }
+          }
+        }
+      },
+      "minProperties": 2
+    }
+  ]
+}

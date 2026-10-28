@@ -1,0 +1,397 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://fw.local/schemas/reviewer-eval-case.schema.json",
+  "title": "evals/reviewer/<id>.yaml: one reviewer eval case (review_pipeline.reviewer_eval; replaces golden-task, retired 2026-10-27; origin, forbidden_findings and the CI summary block added 2026-10-27, decisions.accepted RVEVALRUN)",
+  "description": "The reviewer eval set is the only eval agentive keeps in a user project. On a PR that changes a reviewer prompt, model, tool or review rule, the reviewer-eval CI job runs the whole set N times before and after and posts the result to the PR ($defs.summary); the comment is posted whatever the result; the human merges (tier 2) when it improves (adopt_suggested true, no newly_missed) or, when it does not, only with the PR-body line eval-override: <reason> (decisions.accepted EVALOVERRIDE, 2026-10-27; the line is not a schema field); there is no daily or scheduled run (a user decision that differs from S89, which runs the set daily). Pass rule (review_pipeline.reviewer_eval.scoring): a positive case passes when every expected range is caught by a posted important finding on that file and line range (summary-only mentions do not count); a negative case passes with no blocking finding and no counted finding inside a forbidden_findings range. The bug location of a positive case is human-confirmed: the human merge of the tier 2 PR that adds the case. Retired field: fix_pr (2026-10-27; use origin {kind: fix_pr, ref}).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "pr",
+    "label"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9._-]*$",
+      "description": "case id, equal to the file name without .yaml"
+    },
+    "pr": {
+      "type": "string",
+      "minLength": 1,
+      "description": "the PR the reviewer is run on: PR number (#N) or base..head sha range. Positive: the PR that caused the incident. Negative: a known-clean PR or a safe counterexample"
+    },
+    "label": {
+      "enum": [
+        "positive",
+        "negative"
+      ],
+      "description": "positive = a PR that caused an incident or let a bug through, with the ground-truth bug location confirmed by a human; negative = a known-clean PR, a safe counterexample, or a PR whose findings were answered wrong or intentional (forbidden_findings); expected result: no blocking finding"
+    },
+    "expected_findings": {
+      "type": "array",
+      "minItems": 1,
+      "description": "positive only: the ground-truth bug location(s), file and an allowed line range, confirmed by a human who knows the code; every range must be caught",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "file",
+          "line_from",
+          "line_to"
+        ],
+        "properties": {
+          "file": {
+            "type": "string",
+            "minLength": 1
+          },
+          "line_from": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "line_to": {
+            "type": "integer",
+            "minimum": 1
+          }
+        }
+      }
+    },
+    "budget_usd": {
+      "type": "number",
+      "exclusiveMinimum": 0,
+      "description": "optional --max-budget-usd for the headless run of this case"
+    },
+    "origin": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "ref"
+      ],
+      "description": "positive only: where the ground-truth location comes from (user decision 2026-10-27, A12). injected_bug is allowed only with the human check that every positive gets (the tier 2 merge)",
+      "properties": {
+        "kind": {
+          "enum": [
+            "fix_pr",
+            "revert",
+            "reproduction_diff",
+            "injected_bug"
+          ]
+        },
+        "ref": {
+          "type": "string",
+          "minLength": 1,
+          "description": "the fix or revert PR (#N) or commit, the path of the reproduction diff, or the commit that injected the bug"
+        }
+      }
+    },
+    "forbidden_findings": {
+      "type": "array",
+      "minItems": 1,
+      "description": "negative only: ranges where a counted finding must not appear (findings answered wrong or intentional before, B11); a negative without it is a clean PR",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "file",
+          "line_from",
+          "line_to"
+        ],
+        "properties": {
+          "file": {
+            "type": "string",
+            "minLength": 1
+          },
+          "line_from": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "line_to": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "x-source": "answered wrong or intentional in an agentive-reply line or an [inferred] reason"
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "label": {
+            "const": "positive"
+          }
+        },
+        "required": [
+          "label"
+        ]
+      },
+      "then": {
+        "required": [
+          "origin",
+          "expected_findings"
+        ],
+        "not": {
+          "required": [
+            "forbidden_findings"
+          ]
+        }
+      },
+      "else": {
+        "not": {
+          "anyOf": [
+            {
+              "required": [
+                "origin"
+              ]
+            },
+            {
+              "required": [
+                "expected_findings"
+              ]
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "side_counts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "total",
+        "baseline_mean",
+        "candidate_mean",
+        "baseline_spread"
+      ],
+      "description": "positives: caught cases; negatives: unwanted findings (lower is better). Means over the N runs; baseline_spread = max - min over the baseline's N runs (run-to-run noise)",
+      "properties": {
+        "total": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "baseline_mean": {
+          "type": "number",
+          "minimum": 0
+        },
+        "candidate_mean": {
+          "type": "number",
+          "minimum": 0
+        },
+        "baseline_spread": {
+          "type": "number",
+          "minimum": 0
+        }
+      }
+    },
+    "case_result": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "label",
+        "baseline_pass_runs",
+        "candidate_pass_runs"
+      ],
+      "description": "a case passes on a side when it passes in a majority of that side's N runs",
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9._-]*$"
+        },
+        "label": {
+          "enum": [
+            "positive",
+            "negative"
+          ]
+        },
+        "baseline_pass_runs": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "candidate_pass_runs": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "the ```yaml agentive-reviewer-eval``` block of the reviewer-eval CI comment (review_pipeline.reviewer_eval.ci); written by CI, read by the human who merges",
+      "required": [
+        "baseline_ref",
+        "candidate_ref",
+        "n_runs",
+        "cases",
+        "positives",
+        "negatives",
+        "newly_caught",
+        "newly_missed",
+        "newly_noisy",
+        "adopt_suggested",
+        "reason"
+      ],
+      "properties": {
+        "baseline_ref": {
+          "type": "string",
+          "minLength": 1,
+          "description": "base branch commit of the reviewer config (before)"
+        },
+        "candidate_ref": {
+          "type": "string",
+          "minLength": 1,
+          "description": "PR head commit (after)"
+        },
+        "n_runs": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "runs per side, default 3 (design judgment)"
+        },
+        "cases": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/case_result"
+          }
+        },
+        "positives": {
+          "$ref": "#/$defs/side_counts"
+        },
+        "negatives": {
+          "$ref": "#/$defs/side_counts"
+        },
+        "newly_caught": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "uniqueItems": true
+        },
+        "newly_missed": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "uniqueItems": true,
+          "description": "positives the baseline caught and the candidate missed: any -> not adopted"
+        },
+        "newly_noisy": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "uniqueItems": true,
+          "description": "negatives that pass on the baseline and fail on the candidate"
+        },
+        "adopt_suggested": {
+          "type": "boolean"
+        },
+        "reason": {
+          "enum": [
+            "improved",
+            "no_regression",
+            "newly_missed",
+            "no_gain",
+            "insufficient_cases",
+            "not_run"
+          ],
+          "description": "improved = the first differing compare key beats the baseline spread; no_regression = no newly_missed and no newly_noisy; not_run = fork PR without secrets"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "newly_missed": {
+                "minItems": 1
+              }
+            },
+            "required": [
+              "newly_missed"
+            ]
+          },
+          "then": {
+            "properties": {
+              "adopt_suggested": {
+                "const": false
+              },
+              "reason": {
+                "const": "newly_missed"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "reason": {
+                "enum": [
+                  "improved",
+                  "no_regression"
+                ]
+              }
+            },
+            "required": [
+              "reason"
+            ]
+          },
+          "then": {
+            "properties": {
+              "adopt_suggested": {
+                "const": true
+              },
+              "newly_missed": {
+                "maxItems": 0
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "reason": {
+                "enum": [
+                  "newly_missed",
+                  "no_gain",
+                  "insufficient_cases",
+                  "not_run"
+                ]
+              }
+            },
+            "required": [
+              "reason"
+            ]
+          },
+          "then": {
+            "properties": {
+              "adopt_suggested": {
+                "const": false
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "reason": {
+                "const": "no_regression"
+              }
+            },
+            "required": [
+              "reason"
+            ]
+          },
+          "then": {
+            "properties": {
+              "newly_noisy": {
+                "maxItems": 0
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

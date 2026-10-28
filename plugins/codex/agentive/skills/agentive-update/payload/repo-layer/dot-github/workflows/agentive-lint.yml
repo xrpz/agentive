@@ -1,0 +1,15 @@
+# agentive-unit: rl.ci.agentive-lint
+# design: spec.repo_checks.agentive_lint, spec.repo_layer.files[f-ci], spec.repo_layer.files[f-lint]
+# One job for every agentive repo check (size, provenance, check-tags, persist, skills, lock, links when enabled).
+name: agentive-lint
+"on":
+  pull_request:
+  merge_group:
+permissions:
+  contents: read
+jobs:
+  agentive-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: .agents/bin/agentive-lint ci

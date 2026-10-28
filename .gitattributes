@@ -1,0 +1,9 @@
+* text=auto eol=lf
+*.png binary
+# generated outputs (tools/generate.py): collapsed in GitHub diffs; review src/ and design/ instead
+plugins/** linguist-generated=true
+docs/map/** linguist-generated=true
+docs/DECISIONS.md linguist-generated=true
+.claude-plugin/marketplace.json linguist-generated=true
+.agents/plugins/marketplace.json linguist-generated=true
+package-lock.json linguist-generated=true

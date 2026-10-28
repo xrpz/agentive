@@ -1,0 +1,21 @@
+# agentive-unit: units.foundation
+# design: docs/IMPLEMENTATION.md §3 (units), §7 (ownership)
+owner: A
+units:
+  - id: lib.agentive
+    kind: repo_layer
+    src: src/repo-layer/dot-agents/lib/agentive/
+    refs: [spec.enforcement.hooks.repo_root, spec.skill_scripts]
+    note: "run-time python3 stdlib library (ayaml YAML subset, common helpers); installed at .agents/lib/agentive/; the engine imports it from payload/repo-layer/dot-agents/lib"
+  - id: rl.compat
+    kind: repo_layer
+    generator: compat
+    install: .agents/compat.yaml
+    f: f-compat
+    schema: version-compat
+    refs: ["spec.compat", "spec.repo_layer.files[f-compat]", "contracts[version-compat]"]   # quote refs that contain [ ]
+  - id: pc.icon
+    kind: plugin_claude
+    src: src/plugin/claude-code/assets/icon.png
+    refs: [spec.distribution.claude_code]
+    note: "512x512 PNG listing icon; plugin.json icon points at it (plugins-reference: icon is read by Anthropic's directory, not by Claude Code)"

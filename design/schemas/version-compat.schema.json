@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://fw.local/schemas/version-compat.schema.json",
+  "title": ".agents/compat.yaml (feature minimum versions; checked by SessionStart)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "claude_code",
+    "codex"
+  ],
+  "properties": {
+    "claude_code": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "min",
+        "features"
+      ],
+      "properties": {
+        "min": {
+          "type": "string",
+          "pattern": "^\\d+\\.\\d+\\.\\d+$"
+        },
+        "features": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "pattern": "^\\d+\\.\\d+\\.\\d+$"
+          }
+        }
+      }
+    },
+    "codex": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "min",
+        "features"
+      ],
+      "properties": {
+        "min": {
+          "type": "string",
+          "description": "semver or 'unverified'"
+        },
+        "features": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

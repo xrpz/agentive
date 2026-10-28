@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://fw.local/schemas/project-config.schema.json",
+  "title": ".agents/framework.yaml (project config the user owns)",
+  "description": "Split from framework-config on 2026-10-27 (N-D8). The knobs without an implemented alternative are constants in the framework design and have no key here. A change to this file is in U2 confirm_scope (review_config).",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "review": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "managed_code_review_copy": {
+          "type": "boolean",
+          "default": false,
+          "description": "U4=C opt-in (.agents/framework.yaml, project): true makes /agentive:init and /agentive:update generate REVIEW.md as a copy of code_review.md for teams that use Claude managed Code Review (Team/Enterprise research preview). Default false: only code_review.md exists. This is the only question /agentive:init asks: a plain yes/no, default No, skipped when --managed-review-copy or --no-managed-review-copy is given (since C-059 init asks no intent or stack questions). The answer is stored here; /agentive:update never asks and follows this key (absent counts as false). The copy is a whole generated file tracked in manifest.generated; code_review.md stays the only source. (C-058, user decision 2026-10-14; pattern: OpenSpec githubCopilot.cloudAgent)"
+        },
+        "pipeline": {
+          "$ref": "review-config.schema.json",
+          "description": "RV1-RV8 + RV7b switches that are left (review-config)"
+        }
+      }
+    }
+  }
+}

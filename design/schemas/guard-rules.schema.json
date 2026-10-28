@@ -1,0 +1,148 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://fw.local/schemas/guard-rules.schema.json",
+  "title": ".agents/guard.yaml (single source of the deny and ask command rules)",
+  "description": "The generator renders Claude permissions.deny / permissions.ask, the Claude PreToolUse guard hook (matcher Bash|PowerShell, onFailure block), .codex/hooks.json (deny only) and .codex/rules/agentive.rules (experimental) from this file. Hooks never return ask: with a human present an ask rule is left to permissions.ask; with no human present (no_human_run, revised 2026-10-27: AGENTIVE_HEADLESS=1, CI or GITHUB_ACTIONS, or permission_mode dontAsk in hook input that carries it; CLAUDE_CODE_REMOTE is not a signal; no signal = interactive) the hook denies with a handoff reason. An ask rule that a permission rule cannot express (expressible: false) is rendered as deny and init warns. A repo override may add rules or turn ask into deny, never remove a framework rule or turn deny into ask (checked by the generator). There is no pack field: infra, DB and k8s rules are always on.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "rules"
+  ],
+  "properties": {
+    "version": {
+      "const": 1
+    },
+    "rules": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/rule"
+      }
+    }
+  },
+  "$defs": {
+    "rule": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "decision",
+        "match",
+        "reason",
+        "next"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9-]*$"
+        },
+        "decision": {
+          "enum": [
+            "deny",
+            "ask"
+          ]
+        },
+        "match": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "value"
+          ],
+          "properties": {
+            "kind": {
+              "enum": [
+                "argv_prefix",
+                "regex",
+                "special"
+              ],
+              "description": "argv_prefix: exact argv prefix after normalization (also used for Codex rules); regex: on the normalized command text; special: a named check implemented in the hook (default_branch_push, unresolvable_rm_var, sql_without_where)"
+            },
+            "value": {
+              "oneOf": [
+                {
+                  "type": "array",
+                  "minItems": 1,
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                {
+                  "type": "string",
+                  "minLength": 1
+                }
+              ]
+            },
+            "unless": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "argv tokens or regexes that exempt the command (for example --dry-run); such a rule is matched only in the hook, because permissions.deny cannot carve exceptions"
+            }
+          }
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1
+        },
+        "next": {
+          "type": "string",
+          "minLength": 1,
+          "description": "the next action, printed as BLOCKED <id>: <reason>. NEXT: <next>"
+        },
+        "expressible": {
+          "type": "boolean",
+          "default": true,
+          "description": "false: no permission rule can express it -> deny + init warning"
+        },
+        "tools": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "claude_code",
+              "codex"
+            ]
+          },
+          "default": [
+            "claude_code",
+            "codex"
+          ]
+        },
+        "source": {
+          "enum": [
+            "framework",
+            "repo"
+          ],
+          "default": "framework"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "decision": {
+                "const": "ask"
+              },
+              "expressible": {
+                "const": false
+              }
+            },
+            "required": [
+              "expressible"
+            ]
+          },
+          "then": {
+            "properties": {
+              "decision": {
+                "const": "deny"
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

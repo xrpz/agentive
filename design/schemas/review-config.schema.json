@@ -1,0 +1,378 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://fw.local/schemas/review-config.schema.json",
+  "title": ".agents/framework.yaml review.pipeline (code-review pipeline RV1-RV8 + RV7b: the switches that are left, profiles, criteria scope, tier-1 auto-merge mode)",
+  "description": "Accepted designs RV and RV7b (2026-10-14), revised 2026-10-27 (N-review N-D1..N-D5, big-tech review decisions). Every stage always runs: there are no stage on/off switches (N-D3 N1-e). What is left: RV1 exclusions and required checks, RV3 llm_layer, RV5 reviewers and shadow_reviewers, the precommit reviewer list, auto_merge.tier1 (shadow | on | off), criteria scope and rules_file. The rubric (U6) lives in .agents/rubric.yaml + .agents/custom/.agents/rubric.yaml (schema rubric), not here. Kill-switch numbers (2 within 7 days, per tier and source) are constants. Review criteria scope (C-058): a criteria file applies to a changed file only when its directory is an ancestor; one kind per file; no applicable file is normal.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "stages": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "RV1": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "exclude_globs": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "added to the agentive manifest paths.generated and paths.vendor"
+            },
+            "require_checks": {
+              "type": "array",
+              "items": {
+                "enum": [
+                  "lint",
+                  "typecheck",
+                  "test",
+                  "build",
+                  "ci"
+                ]
+              },
+              "uniqueItems": true,
+              "default": [
+                "lint",
+                "typecheck",
+                "test"
+              ]
+            }
+          }
+        },
+        "RV3": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "llm_layer": {
+              "type": "boolean",
+              "default": true,
+              "description": "the LLM layer classifies changes the rules leave undecided (it may never pick a tier-0 class). false -> an undecided change is class other and goes to a human"
+            }
+          }
+        },
+        "RV5": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "reviewers": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/reviewer_id"
+              },
+              "uniqueItems": true,
+              "minItems": 2,
+              "default": [
+                "correctness-reviewer",
+                "security-reviewer",
+                "testing-reviewer"
+              ],
+              "contains": {
+                "const": "correctness-reviewer"
+              },
+              "description": "D1 (2026-10-27): correctness-reviewer and security-reviewer always run; testing-reviewer runs only when test files change. correctness-reviewer and security-reviewer cannot be removed",
+              "allOf": [
+                {
+                  "contains": {
+                    "const": "security-reviewer"
+                  }
+                }
+              ]
+            },
+            "shadow_reviewers": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/reviewer_id"
+              },
+              "uniqueItems": true,
+              "default": [],
+              "description": "reviewers that report non-blocking findings only (shadow mode) until a human removes them from this list (P6/P7)"
+            },
+            "context": {
+              "const": "fresh",
+              "default": "fresh",
+              "description": "independence rule (Z5); not configurable"
+            }
+          }
+        },
+        "RV8": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "check_name": {
+              "const": "agentive-review-gate",
+              "default": "agentive-review-gate"
+            },
+            "coverage": {
+              "type": "object",
+              "additionalProperties": false,
+              "description": "gate-only new-code coverage condition (blocks auto-merge, does not raise the tier); needs the agentive manifest verbs.test.coverage_report, otherwise skipped with reason coverage_unavailable",
+              "properties": {
+                "min_new_code_pct": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 100,
+                  "default": 80
+                },
+                "exempt_new_lines_lt": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "default": 20
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "profiles": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "precommit": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "stages": {
+              "const": [
+                "RV1",
+                "RV2",
+                "RV5"
+              ],
+              "default": [
+                "RV1",
+                "RV2",
+                "RV5"
+              ],
+              "description": "constant (N-D3 N1-f): CI computes RV3/RV4"
+            },
+            "reviewers": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/reviewer_id"
+              },
+              "uniqueItems": true,
+              "minItems": 1,
+              "default": [
+                "correctness-reviewer"
+              ]
+            }
+          }
+        },
+        "ci": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "stages": {
+              "const": [
+                "RV1",
+                "RV2",
+                "RV3",
+                "RV4",
+                "RV7b",
+                "RV5",
+                "RV7",
+                "RV6",
+                "RV8"
+              ],
+              "default": [
+                "RV1",
+                "RV2",
+                "RV3",
+                "RV4",
+                "RV7b",
+                "RV5",
+                "RV7",
+                "RV6",
+                "RV8"
+              ],
+              "description": "constant order (N-D2 option A, N-D3 N1-c): generate -> verify -> dedupe/rank -> post"
+            }
+          }
+        }
+      }
+    },
+    "rules_file": {
+      "type": "string",
+      "default": "code_review.md",
+      "description": "file that holds the ```yaml agentive-review-rules``` block: the single review criteria file (U4=C). RV2-RV4 read its rules block from the base commit."
+    },
+    "auto_merge": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "tier1": {
+          "enum": [
+            "shadow",
+            "on",
+            "off"
+          ],
+          "default": "shadow",
+          "description": "U1.d (2026-10-27): tier-1 auto-merge starts as shadow (the gate labels PRs it would have auto-merged agentive:shadow-auto-merge and a human merges). A human switches it to on. off: tier 1 always goes to a human and RV7b is not computed. There is no automatic promotion. tier 0 auto-merge is not affected"
+        },
+        "kill_switch": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "U1.c constants; shown so that a config trying to change them is rejected",
+          "properties": {
+            "count": {
+              "const": 2
+            },
+            "window_days": {
+              "const": 7
+            },
+            "scope": {
+              "const": "tier_and_source"
+            },
+            "state_label": {
+              "const": "agentive:auto-merge-demoted"
+            },
+            "reenable": {
+              "const": "human_closes_state_issue"
+            }
+          }
+        }
+      }
+    },
+    "criteria": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Which criteria file governs a changed file (user decision 2026-10-14, C-058). The three rules are fixed by the decision; only fallback_files is a free setting.",
+      "properties": {
+        "scope": {
+          "const": "ancestor_directory"
+        },
+        "one_kind_per_file": {
+          "const": true
+        },
+        "no_applicable_file": {
+          "const": "normal"
+        },
+        "fallback_files": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "CLAUDE.md",
+              "AGENTS.md"
+            ]
+          },
+          "default": [
+            "CLAUDE.md",
+            "AGENTS.md"
+          ]
+        }
+      }
+    }
+  },
+  "$defs": {
+    "stage_id": {
+      "enum": [
+        "RV1",
+        "RV2",
+        "RV3",
+        "RV4",
+        "RV5",
+        "RV6",
+        "RV7",
+        "RV7b",
+        "RV8"
+      ]
+    },
+    "reviewer_id": {
+      "enum": [
+        "correctness-reviewer",
+        "security-reviewer",
+        "testing-reviewer"
+      ],
+      "description": "D1 (2026-10-27), naming '<axis>-reviewer'"
+    },
+    "criteria_entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "files"
+      ],
+      "properties": {
+        "kind": {
+          "enum": [
+            "dedicated",
+            "fallback",
+            "none"
+          ]
+        },
+        "sources": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": "criteria files that govern the listed changed files (repo-relative); absent when kind is none"
+        },
+        "files": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": "changed files (repo-relative)"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "none"
+              }
+            }
+          },
+          "then": {
+            "not": {
+              "required": [
+                "sources"
+              ]
+            }
+          },
+          "else": {
+            "required": [
+              "sources"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "fallback"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "sources": {
+                "items": {
+                  "pattern": "(^|/)(CLAUDE|AGENTS)\\.md$"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "criteria_map": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/criteria_entry"
+      },
+      "description": "Result of the RV1 criteria mapping: which criteria file governed which changed files. Each changed file appears in exactly one entry and every source is in an ancestor directory of its files (JSON Schema cannot express either; the pipeline checks them). A file with kind none is a normal result."
+    }
+  }
+}

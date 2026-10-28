@@ -1,0 +1,70 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://fw.local/schemas/harvest-queue.schema.json",
+  "title": ".agents/state/harvest-queue.jsonl line (SessionEnd appends; the repo skill /distill consumes)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "session_id",
+    "transcript_path",
+    "reason",
+    "signals",
+    "at"
+  ],
+  "properties": {
+    "session_id": {
+      "type": "string"
+    },
+    "transcript_path": {
+      "type": "string"
+    },
+    "reason": {
+      "type": "string"
+    },
+    "at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "signals": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "stop_blocks": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "verify_fail_streak": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "repeated_command": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "normalized",
+              "count"
+            ],
+            "properties": {
+              "normalized": {
+                "type": "string",
+                "minLength": 1
+              },
+              "count": {
+                "type": "integer",
+                "minimum": 2
+              },
+              "sessions": {
+                "type": "integer",
+                "minimum": 1
+              }
+            }
+          },
+          "description": "normalized Bash command or sequence seen >=2 times in one session or in >=2 sessions; git status, ls, pwd and the test verb are excluded"
+        }
+      },
+      "minProperties": 1
+    }
+  }
+}

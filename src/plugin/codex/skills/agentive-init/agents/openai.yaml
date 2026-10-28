@@ -1,0 +1,7 @@
+# agentive-unit: px.skill.agentive-init
+# design: spec.plugin.invocation.init, spec.plugin.invocation.rule
+interface:
+  display_name: "agentive init"
+  short_description: "First-time agentive setup of this repository (user-invoked only)"
+policy:
+  allow_implicit_invocation: false

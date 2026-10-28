@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://fw.local/schemas/stop-state.schema.json",
+  "title": ".agents/state/stop.json (Stop hook counter; gitignored)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "session_id",
+    "consecutive_blocks",
+    "last_fail_count"
+  ],
+  "properties": {
+    "session_id": {
+      "type": "string"
+    },
+    "consecutive_blocks": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "last_fail_count": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "total_blocks": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "last_reason": {
+      "enum": [
+        "DONE",
+        "PENDING",
+        "NO-PROGRESS",
+        "CAP",
+        "BLOCK",
+        null
+      ]
+    },
+    "handoff_requested": {
+      "type": "boolean",
+      "default": false,
+      "description": "set on NO-PROGRESS when the one continuation is requested; the next Stop clears it and exits 0 without re-running verify (D7 #6)"
+    },
+    "failure_window": {
+      "type": "array",
+      "items": {
+        "type": "integer",
+        "minimum": 0
+      },
+      "maxItems": 10,
+      "description": "total_failures of the recent runs; emptied on reset (verify green, decrease, new start, right after NO-PROGRESS)"
+    },
+    "last_reset": {
+      "enum": [
+        "verify_green",
+        "decreased",
+        "new_start",
+        "after_no_progress",
+        null
+      ]
+    }
+  }
+}

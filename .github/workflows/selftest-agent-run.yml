@@ -1,0 +1,42 @@
+# agentive-unit: config.selftest-agent-run
+# design: spec.framework_repo.self_tests (sample_repo_tests agent_run: only when init/apply paths change, 1-2 stacks), spec.framework_repo.maintenance_model
+# Optional agent-run half of sample_repo_tests (owner D). Needs the ANTHROPIC_API_KEY secret; without it the job says
+# so and passes. Never on a schedule (FM): only on PRs that change init/apply paths [설계 판단: path list, stacks ts + py].
+name: selftest-agent-run
+"on":
+  pull_request:
+    paths:
+      - "src/engine/**"
+      - "src/plugin/**"
+      - "src/repo-layer/**"
+      - "src/units/**"
+      - "tools/generate.py"
+      - "tools/bundles.yaml"
+      - "fixtures/**"
+      - "tests/sample_repo/**"
+permissions:
+  contents: read
+jobs:
+  agent-run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      HAS_KEY: ${{ secrets.ANTHROPIC_API_KEY != '' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python3 -m pip install -r requirements-dev.txt
+      - run: python3 tools/generate.py --check
+      - name: no API key
+        if: env.HAS_KEY != 'true'
+        run: echo "AGENT_RUN=skipped (no ANTHROPIC_API_KEY secret, for example a fork PR)"
+      - name: install Claude Code
+        if: env.HAS_KEY == 'true'
+        run: npm install -g @anthropic-ai/claude-code
+      - name: fixture tasks through the headless standard command
+        if: env.HAS_KEY == 'true'
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: python3 tests/sample_repo/agent_run.py --stacks ts py

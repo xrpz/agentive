@@ -1,0 +1,61 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "plansDirectory": "docs/plans",
+  "env": "%%agentive:render.settings_env%%",
+  "permissions": {
+    "deny": "%%agentive:render.permissions_deny%%",
+    "ask": "%%agentive:render.permissions_ask%%"
+  },
+  "sandbox": {
+    "enabled": true,
+    "credentials": {
+      "files": [
+        {"path": "~/.ssh", "mode": "deny"},
+        {"path": "~/.aws", "mode": "deny"},
+        {"path": "~/.gnupg", "mode": "deny"}
+      ],
+      "envVars": [
+        {"name": "GITHUB_TOKEN", "mode": "deny"},
+        {"name": "NPM_TOKEN", "mode": "deny"}
+      ]
+    }
+  },
+  "hooks": {
+    "SessionStart": [
+      {"matcher": "startup|resume|clear|compact", "hooks": [
+        {"type": "command", "command": "python3", "args": ["${CLAUDE_PROJECT_DIR}/.agents/hooks/session-start-notice.py"], "timeout": 30}
+      ]}
+    ],
+    "PreToolUse": [
+      {"matcher": "Bash|PowerShell", "hooks": [
+        {"type": "command", "command": "python3", "args": ["${CLAUDE_PROJECT_DIR}/.agents/hooks/pre-tool-use-guard.py"], "timeout": 30, "onFailure": "block"}
+      ]},
+      {"matcher": "Read|Bash", "hooks": [
+        {"type": "command", "command": "python3", "args": ["${CLAUDE_PROJECT_DIR}/.agents/hooks/pre-tool-use-context-gate.py"], "timeout": 30}
+      ]},
+      {"matcher": "Bash", "hooks": [
+        {"type": "command", "command": "python3", "args": ["${CLAUDE_PROJECT_DIR}/.agents/hooks/pre-tool-use-test-rewrite.py"], "timeout": 30}
+      ]}
+    ],
+    "PostToolUse": [
+      {"matcher": "Edit|Write", "hooks": [
+        {"type": "command", "command": "python3", "args": ["${CLAUDE_PROJECT_DIR}/.agents/hooks/post-tool-use-lint.py"], "timeout": 300}
+      ]}
+    ],
+    "Stop": [
+      {"hooks": [
+        {"type": "command", "command": "python3", "args": ["${CLAUDE_PROJECT_DIR}/.agents/hooks/stop-verify.py"], "timeout": 1800}
+      ]}
+    ],
+    "FileChanged": [
+      {"matcher": "%%agentive:render.filechanged_matcher%%", "hooks": [
+        {"type": "command", "command": "python3", "args": ["${CLAUDE_PROJECT_DIR}/.agents/hooks/file-changed-dirty.py"], "timeout": 30}
+      ]}
+    ],
+    "SessionEnd": [
+      {"hooks": [
+        {"type": "command", "command": "python3", "args": ["${CLAUDE_PROJECT_DIR}/.agents/hooks/session-end-harvest.py"], "timeout": 5}
+      ]}
+    ]
+  }
+}

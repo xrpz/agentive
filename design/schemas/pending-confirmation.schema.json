@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://fw.local/schemas/pending-confirmation.schema.json",
+  "title": ".agents/state/pending-confirmation.json (files a headless /agentive:init or /agentive:update skipped)",
+  "description": "A run with no human present (no_human_run, revised 2026-10-27: AGENTIVE_HEADLESS=1, CI or GITHUB_ACTIONS, or permission_mode dontAsk in hook input that carries it; CLAUDE_CODE_REMOTE is not a signal; no signal = interactive; headless init and update read the environment signals) writes the files outside U2 confirm_scope and records the skipped confirm_scope files here; the next interactive SessionStart shows a notice and the agent writes them after the human approves (decided 2026-10-16).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "created_at",
+    "command",
+    "files"
+  ],
+  "properties": {
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "command": {
+      "enum": [
+        "/agentive:init",
+        "/agentive:update",
+        "$agentive-init",
+        "$agentive-update"
+      ]
+    },
+    "framework_version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "files": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "path",
+          "category",
+          "rendered_sha256"
+        ],
+        "properties": {
+          "path": {
+            "type": "string",
+            "minLength": 1
+          },
+          "category": {
+            "enum": [
+              "hooks",
+              "permissions",
+              "ci",
+              "claude_settings",
+              "codex_dir",
+              "review_config"
+            ]
+          },
+          "rendered_sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$",
+            "description": "hash of the content that would have been written, so the approval applies to exactly that content"
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,20 @@
+# agentive-unit: gen.bundles
+# design: spec.distribution, spec.framework_repo.versioning (version_step: both plugin manifests)
+# Where tools/generate.py puts the generated plugin outputs. Owner: A (foundation).
+description: "AI-native SDLC and codebase framework: Claude Code implements, Codex reviews. /agentive:init configures a repo from its own evidence."
+marketplace_description: "agentive framework plugins"
+owner: {name: xrpz}
+repo_slug: xrpz/agentive                     # <owner/repo> in the install sequence
+keywords: [ai-native, sdlc, code-review, agents]
+claude:
+  root: plugins/claude-code/agentive          # Claude Code plugin (spec.distribution.claude_code)
+  icon: ./assets/icon.png                     # plugin.json icon (directory listing only; Claude Code does not read it)
+  payload: [payload]                          # one shared payload; plugin skills reach it at ${CLAUDE_PLUGIN_ROOT}/payload (substituted in skill content: IMPLEMENTATION.md §9.1)
+codex:
+  root: plugins/codex/agentive                # Codex plugin, portable plugin.json at its root [S14]
+  payload: [skills/agentive-init/payload, skills/agentive-update/payload]   # each Codex skill is self-contained (codex_only_bootstrap copies only these two dirs)
+  lock_skills: [agentive-init, agentive-update]
+  policy: {installation: AVAILABLE, authentication: ON_INSTALL}
+  category: Developer Tools                   # [설계 판단] free text in the Codex marketplace entry
+generated_roots: [plugins, docs/map]          # every file under these is generated; anything else there is ORPHANED
+generated_files: [docs/DECISIONS.md, .claude-plugin/marketplace.json, .agents/plugins/marketplace.json, AGENTS.md]   # AGENTS.md: only its install-sequence region

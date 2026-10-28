@@ -1,0 +1,287 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://fw.local/schemas/precommit-review.schema.json",
+  "title": ".agents/state/precommit-review.json (precommit-review skill output; pipeline profile precommit RV1, RV2, RV5)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "blocking",
+    "nits",
+    "at",
+    "confirm_scope_hits",
+    "u2"
+  ],
+  "properties": {
+    "blocking": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/f"
+      }
+    },
+    "nits": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/f"
+      },
+      "description": "non-blocking style/naming/readability notes; never sent to the author agent as fix requests (F1e)"
+    },
+    "at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "trust_boundary_hits": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "RV2 hits; recorded, do not block the commit, force human approval at PR"
+    },
+    "checks_ok": {
+      "type": "boolean",
+      "description": "RV1: inner verify green"
+    },
+    "reviewer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "reviewer_id",
+        "session_id",
+        "context"
+      ],
+      "properties": {
+        "session_id": {
+          "type": "string"
+        },
+        "context": {
+          "const": "fresh"
+        },
+        "reviewer_id": {
+          "$ref": "review-config.schema.json#/$defs/reviewer_id"
+        }
+      }
+    },
+    "confirm_scope_hits": {
+      "type": "array",
+      "description": "RV2.confirm_scope hits (U2 confirm_scope categories)",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "path",
+          "category",
+          "glob"
+        ],
+        "properties": {
+          "path": {
+            "type": "string"
+          },
+          "category": {
+            "enum": [
+              "hooks",
+              "permissions",
+              "ci",
+              "claude_settings",
+              "codex_dir",
+              "review_config"
+            ]
+          },
+          "glob": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "u2": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "run",
+        "human_confirmation",
+        "action"
+      ],
+      "description": "U2 final confirmation record written by the commit procedure. pr_only_tier2: do not commit to the default branch, do not merge; work branch + PR only (U2.non_interactive, user 2026-10-14)",
+      "properties": {
+        "run": {
+          "enum": [
+            "interactive",
+            "non_interactive",
+            "unknown"
+          ]
+        },
+        "human_confirmation": {
+          "enum": [
+            "not_required",
+            "obtained",
+            "not_obtained"
+          ]
+        },
+        "action": {
+          "enum": [
+            "commit",
+            "pr_only_tier2"
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "human_confirmation": {
+                "const": "not_obtained"
+              }
+            },
+            "required": [
+              "human_confirmation"
+            ]
+          },
+          "then": {
+            "properties": {
+              "action": {
+                "const": "pr_only_tier2"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "human_confirmation": {
+                "enum": [
+                  "obtained",
+                  "not_required"
+                ]
+              }
+            },
+            "required": [
+              "human_confirmation"
+            ]
+          },
+          "then": {
+            "properties": {
+              "action": {
+                "const": "commit"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "run": {
+                "enum": [
+                  "non_interactive",
+                  "unknown"
+                ]
+              }
+            },
+            "required": [
+              "run"
+            ]
+          },
+          "then": {
+            "properties": {
+              "human_confirmation": {
+                "enum": [
+                  "not_required",
+                  "not_obtained"
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    "criteria": {
+      "$ref": "review-config.schema.json#/$defs/criteria_map"
+    },
+    "head_sha": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{7,64}$",
+      "description": "HEAD when the review ran (the staged diff is reviewed on top of it)"
+    }
+  },
+  "$defs": {
+    "f": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "file",
+        "line",
+        "trigger",
+        "summary"
+      ],
+      "properties": {
+        "file": {
+          "type": "string"
+        },
+        "line": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "trigger": {
+          "type": "string",
+          "minLength": 1
+        },
+        "summary": {
+          "type": "string"
+        },
+        "pre_existing": {
+          "type": "boolean"
+        }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "description": "no hit -> not_required",
+      "if": {
+        "properties": {
+          "confirm_scope_hits": {
+            "maxItems": 0
+          }
+        },
+        "required": [
+          "confirm_scope_hits"
+        ]
+      },
+      "then": {
+        "properties": {
+          "u2": {
+            "properties": {
+              "human_confirmation": {
+                "const": "not_required"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "description": "hit -> obtained or not_obtained",
+      "if": {
+        "properties": {
+          "confirm_scope_hits": {
+            "minItems": 1
+          }
+        },
+        "required": [
+          "confirm_scope_hits"
+        ]
+      },
+      "then": {
+        "properties": {
+          "u2": {
+            "properties": {
+              "human_confirmation": {
+                "enum": [
+                  "obtained",
+                  "not_obtained"
+                ]
+              }
+            }
+          }
+        }
+      }
+    }
+  ]
+}

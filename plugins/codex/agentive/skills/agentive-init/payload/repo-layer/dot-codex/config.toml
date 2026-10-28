@@ -1,0 +1,6 @@
+# agentive-unit: rl.codex.config
+# design: spec.repo_layer.files[f-codex-config], spec.enforcement.sandbox.codex
+# Project Codex config (loaded when the project .codex/ layer is trusted). CI reviewer runs use
+# --sandbox read-only --ask-for-approval never instead. Network is off by default in workspace-write.
+sandbox_mode = "workspace-write"
+approval_policy = "on-request"

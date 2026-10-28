@@ -1,0 +1,93 @@
+# agentive-unit: units.plugin
+# design: docs/IMPLEMENTATION.md §3 (units), §7 (ownership: B)
+owner: B
+units:
+  # ---------------------------------------------------------------- engine (bundled in every payload)
+  - id: eng.apply
+    kind: engine
+    src: src/engine/
+    refs: [spec.init_apply, spec.init_apply.update, spec.init_apply.managed_regions, spec.init_apply.headless_init_update, "contracts[drift-report]", "contracts[pending-confirmation]"]
+    note: "apply.py {init|update|status|reprove} (CLI contract docs/impl/B.md §2), evidence.py, render.py, regions.py, prove.py"
+  # ---------------------------------------------------------------- repo layer
+  - id: rl.bin.verb
+    kind: repo_layer
+    src: src/repo-layer/dot-agents/bin/verb
+    f: f-verb
+    refs: [spec.verb_wrapper, "spec.repo_layer.files[f-verb]"]
+  - id: rl.hooks
+    kind: repo_layer
+    src: src/repo-layer/dot-agents/hooks/
+    confirm_scope: [hooks]
+    refs: [spec.enforcement.hooks, spec.stop_hook, spec.guard, spec.context_management.context_gate, spec.init_apply.session_start, spec.maintenance.harvest]
+    note: "installed hook scripts .agents/hooks/<event>-<purpose>.py [설계 판단 path, docs/IMPLEMENTATION.md §8]; called from .claude/settings.json and .codex/hooks.json"
+  - id: rl.guard
+    kind: repo_layer
+    src: src/repo-layer/dot-agents/guard.yaml
+    f: f-guard
+    schema: guard-rules
+    confirm_scope: [permissions]
+    refs: [spec.guard, "spec.repo_layer.files[f-guard]", "contracts[guard-rules]"]
+  - id: rl.manifest
+    kind: repo_layer
+    src: src/repo-layer/dot-agents/manifest.yaml
+    f: f-manifest
+    schema: manifest
+    refs: ["spec.repo_layer.files[f-manifest]", "contracts[manifest]"]
+    note: "seed only: the engine writes .agents/manifest.yaml from evidence and never installs this template as a generated file"
+  - id: rl.claude.settings
+    kind: repo_layer
+    src: src/repo-layer/dot-claude/settings.json
+    f: f-settings
+    confirm_scope: [claude_settings, hooks, permissions]
+    refs: ["spec.repo_layer.files[f-settings]", spec.enforcement.permissions, spec.enforcement.sandbox, spec.enforcement.hooks]
+  - id: rl.codex.hooks
+    kind: repo_layer
+    src: src/repo-layer/dot-codex/hooks.json
+    f: f-codex-hooks
+    confirm_scope: [codex_dir, hooks]
+    refs: ["spec.repo_layer.files[f-codex-hooks]", spec.guard.codex, spec.stop_hook.codex]
+  - id: rl.codex.config
+    kind: repo_layer
+    src: src/repo-layer/dot-codex/config.toml
+    f: f-codex-config
+    confirm_scope: [codex_dir]
+    refs: ["spec.repo_layer.files[f-codex-config]", spec.enforcement.sandbox.codex]
+  - id: rl.codex.rules
+    kind: repo_layer
+    src: src/repo-layer/dot-codex/rules/agentive.rules
+    f: f-codex-rules
+    confirm_scope: [codex_dir, permissions]
+    refs: ["spec.repo_layer.files[f-codex-rules]", spec.guard.codex]
+  - id: rl.codex.rules-check
+    kind: repo_layer
+    src: src/repo-layer/dot-codex/rules/agentive-execpolicy-check.txt
+    f: f-codex-rules
+    confirm_scope: [codex_dir]
+    refs: ["spec.repo_layer.files[f-codex-rules]"]
+    note: "the `codex execpolicy check` fixture generated with agentive.rules"
+  # ---------------------------------------------------------------- Claude Code plugin
+  - id: pc.skill.init
+    kind: plugin_claude
+    src: src/plugin/claude-code/skills/init/
+    refs: [spec.init_apply, spec.plugin.invocation.init, spec.plugin.command_flags.init, spec.init_apply.gaps.optional_outputs]
+  - id: pc.skill.update
+    kind: plugin_claude
+    src: src/plugin/claude-code/skills/update/
+    refs: [spec.init_apply.update, spec.plugin.invocation.update, spec.plugin.command_flags.update]
+  - id: pc.skill.reprove
+    kind: plugin_claude
+    src: src/plugin/claude-code/skills/reprove/
+    refs: [spec.init_apply.reprove_on_change, spec.plugin.invocation.reprove]
+  - id: pc.hooks
+    kind: plugin_claude
+    src: src/plugin/claude-code/hooks/
+    refs: [spec.init_apply.session_start, "spec.distribution.claude_code.install_sequence"]
+  # ---------------------------------------------------------------- Codex plugin (each skill self-contained)
+  - id: px.skill.agentive-init
+    kind: plugin_codex
+    src: src/plugin/codex/skills/agentive-init/
+    refs: [spec.init_apply, spec.plugin.invocation.init, spec.distribution.codex.codex_only_bootstrap]
+  - id: px.skill.agentive-update
+    kind: plugin_codex
+    src: src/plugin/codex/skills/agentive-update/
+    refs: [spec.init_apply.update, spec.plugin.invocation.update, spec.distribution.codex.codex_only_bootstrap]

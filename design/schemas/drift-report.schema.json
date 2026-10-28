@@ -1,0 +1,483 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://fw.local/schemas/drift-report.schema.json",
+  "title": ".agents/state/drift-report.json (written by /agentive:update: user-modified files and managed regions that were kept, with their differences against the current template; created regions, the stale-line check and errors)",
+  "description": "/agentive:update overwrites files and managed regions whose sha256 still equals the manifest.generated baseline (listed in overwritten) and keeps every file or region whose hash differs from the baseline, or that has no record, as user-modified, listing each as an item. The user then tells Claude in natural language which items to accept. With the explicit --force option, items with reason customized are overwritten as well and listed in forced (with the sha256 they had); no_baseline items are never overwritten by --force. A customization that should survive updates belongs in .agents/custom/ (override_path names the file); override files are user-owned and never appear here. A managed region is a START/END block inside a shared file (spec.init_apply.managed_regions); the field `section` holds its region id and the item id is <path>#<region>. Content outside the markers is never read or written. Regions that did not exist are created at the end of the file and listed in created. Before regions are rewritten update runs the stale-line check from each region's verified commit (stale_check, stale). A file whose markers are malformed is left untouched and listed in errors. Item ids are stable across runs (<path> or <path>#<region>) and each id is in only one of overwritten, forced, created and items, and unique within each (update checks this; JSON Schema cannot express it).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "generated_at",
+    "framework",
+    "overwritten",
+    "items"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "framework": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "from_version",
+        "to_version"
+      ],
+      "properties": {
+        "from_version": {
+          "type": "string",
+          "pattern": "^\\d+\\.\\d+\\.\\d+$",
+          "description": "manifest.framework.version before this run"
+        },
+        "to_version": {
+          "type": "string",
+          "pattern": "^\\d+\\.\\d+\\.\\d+$",
+          "description": "version of the installed plugin"
+        }
+      }
+    },
+    "overwritten": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/ref"
+      },
+      "description": "files and regions whose hash equalled the baseline (not user-modified) and were replaced by the new templates"
+    },
+    "items": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/drift_item"
+      },
+      "description": "user-modified files and regions that were kept (hash differs from the baseline, or no baseline record), including a region whose markers were deleted (a removed difference)"
+    },
+    "force": {
+      "type": "boolean",
+      "default": false,
+      "description": "true when this run used --force"
+    },
+    "forced": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/forced_ref"
+      },
+      "description": "user-modified files and regions that --force replaced with the new template; empty or absent unless force is true"
+    },
+    "created": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/ref"
+      },
+      "description": "files and regions that did not exist and were created by this run (a region appended to an existing shared file, or a new file); outside content is untouched"
+    },
+    "stale_check": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status"
+      ],
+      "properties": {
+        "status": {
+          "enum": [
+            "done",
+            "skipped"
+          ]
+        },
+        "reason": {
+          "enum": [
+            "no_verified_commit",
+            "commit_not_found",
+            "not_a_git_repository"
+          ],
+          "description": "required when skipped: no_verified_commit (empty repository), commit_not_found (shallow clone or rewritten history), not_a_git_repository"
+        },
+        "since": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[a-f0-9]{7,64}$",
+          "description": "oldest verified_commit used"
+        },
+        "until": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{7,64}$",
+          "description": "HEAD sha of the run"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "skipped"
+              }
+            },
+            "required": [
+              "status"
+            ]
+          },
+          "then": {
+            "required": [
+              "reason"
+            ]
+          }
+        }
+      ],
+      "description": "git log -M --diff-filter=DR --name-status <verified_commit>..HEAD over the managed regions (spec.init_apply.managed_regions.stale_check)"
+    },
+    "stale": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/stale_line"
+      },
+      "description": "region lines that name a path deleted or renamed since the region's verified commit"
+    },
+    "errors": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/error"
+      },
+      "description": "units left untouched because of an error"
+    }
+  },
+  "$defs": {
+    "id": {
+      "type": "string",
+      "pattern": "^[^\\s#]+(#[a-z0-9][a-z0-9._-]*)?$",
+      "description": "stable id: <path> for a whole file, <path>#<region> for a managed region of a shared file"
+    },
+    "ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "path"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "section": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9._-]*$",
+          "description": "region id when the unit is a managed region (the id then is <path>#<region>)"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "required": [
+              "section"
+            ]
+          },
+          "then": {
+            "properties": {
+              "id": {
+                "pattern": "#"
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "id": {
+                "pattern": "^[^#]+$"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "diff": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "summary"
+      ],
+      "properties": {
+        "kind": {
+          "enum": [
+            "added",
+            "removed",
+            "changed"
+          ]
+        },
+        "summary": {
+          "type": "string",
+          "minLength": 1
+        },
+        "detail": {
+          "type": "string"
+        }
+      }
+    },
+    "drift_item": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "path",
+        "reason",
+        "differences",
+        "template_sha256",
+        "current_sha256"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "section": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9._-]*$",
+          "description": "region id when the unit is a managed region (the id then is <path>#<region>)"
+        },
+        "reason": {
+          "enum": [
+            "customized",
+            "no_baseline"
+          ],
+          "description": "customized: current sha256 differs from manifest.generated (the file is user-modified); no_baseline: no record exists (for example a file that existed before the framework)"
+        },
+        "differences": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/diff"
+          },
+          "description": "differences of the current content against the current template"
+        },
+        "template_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "current_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "override_path": {
+          "type": "string",
+          "pattern": "^\\.agents/custom/.+",
+          "description": "where the user can put this customization so the generated file stays framework-owned: the same relative path under .agents/custom/ (spec.init_apply.update.custom_overrides). A hint only; update never writes there."
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "required": [
+              "section"
+            ]
+          },
+          "then": {
+            "properties": {
+              "id": {
+                "pattern": "#"
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "id": {
+                "pattern": "^[^#]+$"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "forced_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "path",
+        "reason",
+        "previous_sha256"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "section": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9._-]*$",
+          "description": "region id when the unit is a managed region (the id then is <path>#<region>)"
+        },
+        "reason": {
+          "const": "customized",
+          "description": "only user-modified items (hash differs from the baseline) can be forced; a no_baseline item is never overwritten by --force"
+        },
+        "previous_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$",
+          "description": "sha256 of the user's version that --force replaced"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "required": [
+              "section"
+            ]
+          },
+          "then": {
+            "properties": {
+              "id": {
+                "pattern": "#"
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "id": {
+                "pattern": "^[^#]+$"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "stale_line": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "path",
+        "named_path",
+        "change",
+        "commit",
+        "resolution"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "named_path": {
+          "type": "string",
+          "minLength": 1,
+          "description": "the path that the region line names"
+        },
+        "change": {
+          "enum": [
+            "deleted",
+            "renamed"
+          ]
+        },
+        "renamed_to": {
+          "type": "string",
+          "minLength": 1
+        },
+        "commit": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{7,64}$",
+          "description": "commit that deleted or renamed the path"
+        },
+        "resolution": {
+          "enum": [
+            "refreshed",
+            "reported"
+          ],
+          "description": "refreshed: the region was unmodified and rewritten from current evidence; reported: the region is user-modified and kept, so the line is only reported"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "change": {
+                "const": "renamed"
+              }
+            },
+            "required": [
+              "change"
+            ]
+          },
+          "then": {
+            "required": [
+              "renamed_to"
+            ]
+          },
+          "else": {
+            "properties": {
+              "renamed_to": false
+            }
+          }
+        }
+      ]
+    },
+    "error": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "path",
+        "code",
+        "message"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "section": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9._-]*$"
+        },
+        "code": {
+          "enum": [
+            "malformed_markers",
+            "invalid_override"
+          ],
+          "description": "malformed_markers: not exactly one START and one END, START after END, or nesting; the file is not written. invalid_override: an override file under .agents/custom/ could not be merged"
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "required": [
+          "force"
+        ],
+        "properties": {
+          "force": {
+            "const": true
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "forced": {
+            "maxItems": 0
+          }
+        }
+      }
+    }
+  ]
+}

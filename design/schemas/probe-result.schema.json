@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://fw.local/schemas/probe-result.schema.json",
+  "title": "capability probe result (manifest.capabilities.T1, T3)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "result",
+    "fallback_applied",
+    "tool",
+    "at"
+  ],
+  "properties": {
+    "result": {
+      "enum": [
+        "pass",
+        "fail",
+        "skipped"
+      ]
+    },
+    "measured": {},
+    "fallback_applied": {
+      "type": "boolean"
+    },
+    "tool": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "version"
+      ],
+      "properties": {
+        "name": {
+          "enum": [
+            "claude_code",
+            "codex"
+          ]
+        },
+        "version": {
+          "type": "string",
+          "pattern": "^\\d+\\.\\d+\\.\\d+$"
+        }
+      }
+    },
+    "at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "description": "re-probe when tool.version differs from the installed version"
+}

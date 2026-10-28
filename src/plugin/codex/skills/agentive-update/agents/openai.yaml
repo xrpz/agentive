@@ -1,0 +1,7 @@
+# agentive-unit: px.skill.agentive-update
+# design: spec.plugin.invocation.update, spec.plugin.invocation.rule
+interface:
+  display_name: "agentive update"
+  short_description: "Re-apply agentive templates to an initialized repository (user-invoked only)"
+policy:
+  allow_implicit_invocation: false

@@ -1,0 +1,125 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://fw.local/schemas/handoff.schema.json",
+  "title": ".agents/state/handoff/<branch-key>.md YAML frontmatter (one active handoff per branch)",
+  "description": "Written by the Stop hook on NO-PROGRESS, by the guard hook when a no-human run hits an ask-class command, and by the spec stage when a headless run must stop on a hard-to-reverse open question. The agent writes only failure_reason, untried and next_step; the script fills the rest and redacts secrets. Stale = HEAD differs from head or the work-tree diff hash differs; a stale handoff is marked, never deleted. SessionStart (startup/resume) asks the human about the current branch's handoff only; files older than 30 days move to handoff/done/.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "branch",
+    "branch_key",
+    "head",
+    "created_at",
+    "reason",
+    "failure_reason",
+    "untried",
+    "next_step"
+  ],
+  "properties": {
+    "branch": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "original branch name; null on a detached HEAD"
+    },
+    "branch_key": {
+      "type": "string",
+      "pattern": "^([a-z0-9.-]+-[a-f0-9]{8}|detached-[a-f0-9]{7})$",
+      "description": "file name: sanitized branch + '-' + first 8 hex of sha256(branch); detached-<sha7> on a detached HEAD"
+    },
+    "head": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{7,64}$"
+    },
+    "worktree_diff_sha256": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "reason": {
+      "enum": [
+        "no_progress",
+        "ask_class_denied",
+        "open_question"
+      ]
+    },
+    "plan": {
+      "type": "string",
+      "description": "docs/plans/<slug>/plan.md when a plan exists"
+    },
+    "task": {
+      "type": "string",
+      "description": "the open plan checkbox"
+    },
+    "blocked_command": {
+      "type": "string",
+      "description": "ask_class_denied only: the denied command (redacted) and its guard rule id"
+    },
+    "failure_reason": {
+      "type": "string",
+      "minLength": 1
+    },
+    "untried": {
+      "type": "string"
+    },
+    "next_step": {
+      "type": "string",
+      "minLength": 1
+    },
+    "stale": {
+      "type": "boolean",
+      "default": false
+    },
+    "previous": {
+      "type": "array",
+      "maxItems": 5,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "at",
+          "head",
+          "summary"
+        ],
+        "properties": {
+          "at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "head": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{7,64}$"
+          },
+          "summary": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "description": "one-line summaries of overwritten handoffs for this branch (design judgment)"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "reason": {
+            "const": "ask_class_denied"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "blocked_command"
+        ]
+      }
+    }
+  ]
+}

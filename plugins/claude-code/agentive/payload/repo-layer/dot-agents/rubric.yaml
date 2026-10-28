@@ -1,0 +1,14 @@
+# agentive-unit: rl.rubric
+# design: spec.repo_layer.files[f-rubric], spec.review_pipeline.stages[RV7b].rubric, contracts[rubric], decisions U6 = agentive:rubric@1
+# Generated preset (whole file). RV7b scores tier 1 PRs from deterministic inputs; RV8 sends a score above human_if_score_gt to a human.
+# Do not edit: put changes in .agents/custom/.agents/rubric.yaml (extends: "agentive:rubric@1"; items merged by id; enabled: false switches one off).
+preset: "agentive:rubric@1"
+scoring: binary
+human_if_score_gt: 28
+shared_globs: ["**/shared/**", "**/common/**"]
+items:
+  - {id: spread, hit: ">=2 modules or a shared path", input: modules_touched_or_shared_path, weight: 24}
+  - {id: size, hit: ">400 changed lines (absolute LOC only)", input: changed_lines, weight: 24}
+  - {id: incident_history, hit: "revert or hotfix on touched files within 90 days", input: incident_history_90d, weight: 24}
+  - {id: change_type, hit: "feature | fix | dependency", input: change_class, weight: 14}
+  - {id: recent_churn, hit: "touched files changed within 30 days", input: recent_churn_30d, weight: 14}

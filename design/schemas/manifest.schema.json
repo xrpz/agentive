@@ -1,0 +1,575 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://fw.local/schemas/manifest.schema.json",
+  "title": ".agents/manifest.yaml (agentive manifest: repo layer slot manifest)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "framework",
+    "verbs",
+    "paths",
+    "capabilities",
+    "tools",
+    "stop_conditions"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "framework": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "plugin",
+        "version"
+      ],
+      "properties": {
+        "plugin": {
+          "const": "agentive"
+        },
+        "version": {
+          "type": "string",
+          "pattern": "^\\d+\\.\\d+\\.\\d+$"
+        }
+      }
+    },
+    "verbs": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "setup": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/verb"
+            },
+            {
+              "$ref": "#/$defs/pending_verb"
+            }
+          ]
+        },
+        "build": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/verb"
+            },
+            {
+              "$ref": "#/$defs/pending_verb"
+            }
+          ]
+        },
+        "lint": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/verb"
+            },
+            {
+              "$ref": "#/$defs/pending_verb"
+            }
+          ]
+        },
+        "typecheck": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/verb"
+            },
+            {
+              "$ref": "#/$defs/pending_verb"
+            }
+          ]
+        },
+        "test": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/verb"
+            },
+            {
+              "$ref": "#/$defs/pending_verb"
+            }
+          ]
+        },
+        "verify": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/verb"
+            },
+            {
+              "$ref": "#/$defs/pending_verb"
+            }
+          ]
+        },
+        "run": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/verb"
+            },
+            {
+              "$ref": "#/$defs/pending_verb"
+            }
+          ]
+        }
+      },
+      "required": [
+        "lint",
+        "test",
+        "verify"
+      ],
+      "description": "a verb is either a real slot (cmd, tier, evidence, proof) or pending (status pending, reason no_evidence): init found no evidence for it and writes no command (spec.init_apply.empty_dir). Pending verbs are skipped by the verb wrapper, the Stop hook (PENDING) and the CI outer-verbs job. update turns a pending verb into a real one only from evidence."
+    },
+    "paths": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "src",
+        "tests",
+        "generated",
+        "vendor"
+      ],
+      "properties": {
+        "src": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/path_entry"
+          }
+        },
+        "tests": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/path_entry"
+          }
+        },
+        "generated": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/path_entry"
+          }
+        },
+        "vendor": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/path_entry"
+          }
+        },
+        "public_api": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/path_entry"
+          },
+          "description": "optional: files that form the public API (RV1 public API change detection; absent -> detection skipped with a reason)"
+        }
+      }
+    },
+    "capabilities": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "T1": {
+          "$ref": "probe-result.schema.json"
+        },
+        "T3": {
+          "$ref": "probe-result.schema.json"
+        }
+      },
+      "description": "probes T1 and T3 only (N-D8 2026-10-27); T2 and T4 are documented facts"
+    },
+    "tools": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "claude_code": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "version"
+          ],
+          "properties": {
+            "version": {
+              "type": "string",
+              "pattern": "^\\d+\\.\\d+\\.\\d+$"
+            },
+            "plugin": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "name",
+                "version"
+              ],
+              "properties": {
+                "name": {
+                  "const": "agentive"
+                },
+                "version": {
+                  "type": "string",
+                  "pattern": "^\\d+\\.\\d+\\.\\d+$"
+                }
+              }
+            }
+          }
+        },
+        "codex": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "version"
+          ],
+          "properties": {
+            "version": {
+              "type": "string",
+              "pattern": "^\\d+\\.\\d+\\.\\d+$"
+            }
+          }
+        }
+      },
+      "description": "tool versions only: {claude_code, codex}. No CLI list is recorded (an agent checks a CLI with command -v when it needs one; decided 2026-10-16)"
+    },
+    "stop_conditions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "max_blocks",
+        "no_progress_rounds"
+      ],
+      "properties": {
+        "max_blocks": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 8,
+          "description": "hook-counted consecutive Stop blocks before CAP. If > 8, also set CLAUDE_CODE_STOP_HOOK_BLOCK_CAP >= max_blocks (official cap counts only blocks with no tool call in between)"
+        },
+        "no_progress_rounds": {
+          "type": "integer",
+          "minimum": 2,
+          "default": 2
+        },
+        "budget_usd": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        }
+      }
+    },
+    "context": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "read_limit_bytes": {
+          "type": "integer",
+          "minimum": 1024,
+          "default": 65536,
+          "description": "context gate: a Read without offset/limit, or an unbounded cat/nl/bat, of a file larger than this is denied (design judgment 64 KiB)"
+        }
+      }
+    },
+    "conflicts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "path",
+          "strategy",
+          "proposal"
+        ],
+        "properties": {
+          "path": {
+            "type": "string"
+          },
+          "strategy": {
+            "const": "keep_existing_propose_diff"
+          },
+          "proposal": {
+            "type": "string",
+            "description": "path of the proposed diff file"
+          }
+        }
+      }
+    },
+    "generated": {
+      "type": "object",
+      "description": "sha256 baseline of every whole generated file and every managed region that init generated and update rewrites (spec.init_apply.update, init_apply.managed_regions). Key = the same stable id a drift item uses: <path> for a whole file (kind file), <path>#<region> for a START/END region of a shared file such as AGENTS.md, CLAUDE.md, code_review.md or .gitignore (kind region). A path is either whole or shared: it never has both a <path> entry and a <path>#<region> entry (update checks this; JSON Schema cannot express it). A whole-file hash is that of the rendered content (current template merged with the user's override files in .agents/custom/). A region hash is that of the region body: the lines strictly between the markers minus the provenance line, LF-normalized and trailing whitespace trimmed, so refreshing the verified date and commit is never a user edit. A region entry also records verified_at and verified_commit (the HEAD sha when it was last written, null when there is no commit); update runs the stale-line check from that commit. On /agentive:update an entry whose current sha256 equals its record is overwritten (regions: body replaced, provenance refreshed); one whose sha256 differs, or that has no record, is user-modified: preserved and reported in .agents/state/drift-report.json, and only the explicit --force option overwrites it. Content outside the markers is never read or written. /agentive:update --status reads this map and the files, writes nothing, and lists the modified and missing entries. REVIEW.md has an entry only while review.managed_code_review_copy is true. JSON files cannot hold markers and are always whole files. Override files are inputs and have no entry. There is no CI drift check.",
+      "propertyNames": {
+        "pattern": "^[^\\s#]+(#[a-z0-9][a-z0-9._-]*)?$",
+        "not": {
+          "pattern": "^\\.agents/custom/"
+        }
+      },
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "kind",
+          "sha256",
+          "framework_version"
+        ],
+        "properties": {
+          "sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "framework_version": {
+            "type": "string",
+            "pattern": "^\\d+\\.\\d+\\.\\d+$",
+            "description": "framework version whose template produced this content"
+          },
+          "overrides": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "pattern": "^\\.agents/custom/.+"
+            },
+            "description": "override files under .agents/custom/ that were merged into this entry's content when it was rendered (informational: lets --status and drift reports say that a customization already lives in an override)"
+          },
+          "kind": {
+            "enum": [
+              "file",
+              "region"
+            ],
+            "description": "file: the key is a path; region: the key is <path>#<region>"
+          },
+          "verified_at": {
+            "type": "string",
+            "format": "date",
+            "description": "region only: date the region was last written or verified"
+          },
+          "verified_commit": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^[a-f0-9]{7,64}$",
+            "description": "region only: HEAD sha at that time; null when the repository has no commit yet (the stale-line check is then skipped with a reason)"
+          }
+        },
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "kind": {
+                  "const": "region"
+                }
+              },
+              "required": [
+                "kind"
+              ]
+            },
+            "then": {
+              "required": [
+                "verified_at",
+                "verified_commit"
+              ]
+            },
+            "else": {
+              "properties": {
+                "verified_at": false,
+                "verified_commit": false
+              }
+            }
+          }
+        ]
+      }
+    },
+    "janitor": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "kinds": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "sensor",
+              "batch_max"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^[a-z0-9][a-z0-9-]*$",
+                "description": "used in the label agentive-janitor:<id>"
+              },
+              "sensor": {
+                "type": "string",
+                "minLength": 1,
+                "description": "deterministic command whose output lists the work (lint, static analysis, CI status, TODO grep)"
+              },
+              "batch_max": {
+                "type": "integer",
+                "minimum": 1
+              }
+            }
+          }
+        }
+      },
+      "description": "default off: no kinds until a human adds one"
+    }
+  },
+  "$defs": {
+    "verb": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "cmd",
+        "tier",
+        "evidence",
+        "proof"
+      ],
+      "properties": {
+        "cmd": {
+          "type": "string",
+          "minLength": 1
+        },
+        "tier": {
+          "enum": [
+            "inner",
+            "outer"
+          ]
+        },
+        "evidence": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "rank",
+            "source",
+            "files"
+          ],
+          "properties": {
+            "rank": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 4,
+              "description": "1 code/lockfile, 2 CI/build config, 3 README, 4 ecosystem official default"
+            },
+            "source": {
+              "type": "string"
+            },
+            "url": {
+              "type": "string",
+              "format": "uri"
+            },
+            "files": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "literal file names; generator builds the FileChanged matcher from these"
+            }
+          }
+        },
+        "pinned": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "by",
+            "at",
+            "text"
+          ],
+          "properties": {
+            "by": {
+              "const": "user"
+            },
+            "at": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "text": {
+              "type": "string"
+            }
+          },
+          "description": "user-stated value; excluded from derive/re-derive and from evidence precedence"
+        },
+        "proof": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "pass_run_id",
+            "at"
+          ],
+          "properties": {
+            "pass_run_id": {
+              "type": "string"
+            },
+            "seeded_fail_run_id": {
+              "type": "string",
+              "description": "required for lint, typecheck, test"
+            },
+            "artifact": {
+              "type": "string",
+              "description": "build: produced artifact path"
+            },
+            "at": {
+              "type": "string",
+              "format": "date-time"
+            }
+          }
+        },
+        "fail_count": {
+          "type": "string",
+          "minLength": 1,
+          "description": "grep -c -E pattern counted on the verb log for the NO-PROGRESS failure count (for example ^FAILED); absent -> 0/1"
+        },
+        "coverage_report": {
+          "type": "string",
+          "description": "test verb only: path of the coverage report RV8 reads for the new-code coverage gate; absent -> coverage_unavailable (skipped with a reason)"
+        }
+      }
+    },
+    "path_entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "proof"
+      ],
+      "properties": {
+        "path": {
+          "type": "string"
+        },
+        "proof": {
+          "enum": [
+            "exists",
+            "gitignored"
+          ]
+        }
+      }
+    },
+    "pending_verb": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "reason"
+      ],
+      "properties": {
+        "status": {
+          "const": "pending"
+        },
+        "reason": {
+          "const": "no_evidence"
+        },
+        "todo": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "stack",
+            "source"
+          ],
+          "properties": {
+            "stack": {
+              "type": "string",
+              "minLength": 1,
+              "description": "stack the repo already names (for example in a README or planning doc)"
+            },
+            "source": {
+              "type": "string",
+              "minLength": 1,
+              "description": "file that names the stack; it becomes a TODO line in the AGENTS.md region, never a command"
+            }
+          },
+          "description": "present only when a repo document already states a stack (BMAD pattern); never holds a command"
+        }
+      }
+    }
+  }
+}

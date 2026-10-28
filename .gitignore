@@ -1,0 +1,9 @@
+# agentive-unit: config.gitignore
+# design: spec.framework_repo
+node_modules/
+__pycache__/
+*.pyc
+.DS_Store
+# local Claude Code state of whoever edits this repo
+.claude/settings.local.json
+.claude/worktrees/

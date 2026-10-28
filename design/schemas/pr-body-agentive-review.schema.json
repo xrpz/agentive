@@ -1,0 +1,782 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://fw.local/schemas/pr-body-agentive-review.schema.json",
+  "title": "PR body of an agentive PR: the markdown headings in x-agentive-body-headings (all_tiers in that order, checked by CI agentive-independence; on tier 2 also ## Explainer first with ### Before / ### After mermaid flows, checked by RV8 agentive-review-gate, reason explainer_missing) and, for chain PRs (spec_stage.chain), the rule data in x-agentive-chain, and the fenced ```yaml block whose top key is agentive-review (written by the repo skill /pr, appended by reviewers and CI)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "agentive-review"
+  ],
+  "properties": {
+    "agentive-review": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "implementer",
+        "reviews"
+      ],
+      "properties": {
+        "implementer": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "tool",
+            "model",
+            "session_id",
+            "started_at"
+          ],
+          "properties": {
+            "tool": {
+              "enum": [
+                "claude_code",
+                "codex",
+                "other"
+              ]
+            },
+            "model": {
+              "type": "string"
+            },
+            "session_id": {
+              "type": "string"
+            },
+            "started_at": {
+              "type": "string",
+              "format": "date-time"
+            }
+          }
+        },
+        "reviews": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "role",
+              "tool",
+              "model",
+              "session_id",
+              "context",
+              "source",
+              "verdict"
+            ],
+            "properties": {
+              "role": {
+                "enum": [
+                  "reviewer",
+                  "verifier",
+                  "coordinator"
+                ],
+                "description": "reviewer = RV5 reviewer; verifier = RV7; coordinator = RV6"
+              },
+              "tool": {
+                "enum": [
+                  "claude_code",
+                  "codex",
+                  "other"
+                ]
+              },
+              "model": {
+                "type": "string"
+              },
+              "session_id": {
+                "type": "string"
+              },
+              "context": {
+                "enum": [
+                  "fresh",
+                  "same"
+                ]
+              },
+              "source": {
+                "enum": [
+                  "code-review",
+                  "codex-review",
+                  "ci",
+                  "precommit-review"
+                ]
+              },
+              "verdict": {
+                "enum": [
+                  "pass",
+                  "block"
+                ]
+              },
+              "findings_ref": {
+                "type": "string"
+              },
+              "reviewer_id": {
+                "$ref": "review-config.schema.json#/$defs/reviewer_id"
+              }
+            }
+          }
+        },
+        "pipeline": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "written by CI profile ci (RV3/RV4/RV7/RV6/RV7b/RV8)",
+          "required": [
+            "classification",
+            "tier",
+            "verified_findings",
+            "risk_score",
+            "gate"
+          ],
+          "properties": {
+            "classification": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "classes",
+                "method"
+              ],
+              "properties": {
+                "classes": {
+                  "type": "array",
+                  "minItems": 1,
+                  "items": {
+                    "$ref": "review-rules.schema.json#/$defs/class"
+                  },
+                  "uniqueItems": true
+                },
+                "method": {
+                  "enum": [
+                    "deterministic",
+                    "llm"
+                  ]
+                }
+              }
+            },
+            "tier": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "value",
+                "reasons"
+              ],
+              "properties": {
+                "value": {
+                  "enum": [
+                    0,
+                    1,
+                    2
+                  ]
+                },
+                "reasons": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "trust_boundary_hits": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
+            },
+            "verified_findings": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "id",
+                  "severity",
+                  "blocking",
+                  "verdict",
+                  "file",
+                  "line",
+                  "summary"
+                ],
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "severity": {
+                    "enum": [
+                      "important",
+                      "nit",
+                      "pre_existing"
+                    ]
+                  },
+                  "blocking": {
+                    "type": "boolean"
+                  },
+                  "verdict": {
+                    "enum": [
+                      "confirmed",
+                      "refuted",
+                      "inconclusive"
+                    ]
+                  },
+                  "file": {
+                    "type": "string"
+                  },
+                  "line": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "summary": {
+                    "type": "string"
+                  },
+                  "reviewers": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "review-config.schema.json#/$defs/reviewer_id"
+                    }
+                  },
+                  "trigger": {
+                    "type": "string"
+                  }
+                },
+                "allOf": [
+                  {
+                    "if": {
+                      "properties": {
+                        "severity": {
+                          "enum": [
+                            "nit",
+                            "pre_existing"
+                          ]
+                        }
+                      }
+                    },
+                    "then": {
+                      "properties": {
+                        "blocking": {
+                          "const": false
+                        }
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            "risk_score": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "score",
+                "reason"
+              ],
+              "properties": {
+                "score": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ],
+                  "minimum": 0,
+                  "maximum": 100
+                },
+                "reason": {
+                  "enum": [
+                    "computed",
+                    "not_tier1",
+                    "tier1_off",
+                    "config_invalid"
+                  ]
+                },
+                "preset": {
+                  "type": "string",
+                  "pattern": "^agentive:rubric@[0-9]+$"
+                },
+                "human_if_score_gt": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "config_sha256": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                }
+              }
+            },
+            "gate": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "decision",
+                "check",
+                "auto_merge"
+              ],
+              "properties": {
+                "decision": {
+                  "enum": [
+                    "pass",
+                    "human_required",
+                    "block"
+                  ]
+                },
+                "check": {
+                  "const": "agentive-review-gate"
+                },
+                "report_ref": {
+                  "type": "string",
+                  "description": "CI artifact URL of review-report.json"
+                },
+                "auto_merge": {
+                  "type": "boolean"
+                },
+                "demoted": {
+                  "type": "boolean",
+                  "description": "U1.c: a demotion issue is open for this PR's tier and source"
+                },
+                "shadow": {
+                  "type": "boolean",
+                  "description": "U1.d: tier 1 in shadow mode and the gate would have auto-merged (label agentive:shadow-auto-merge)"
+                },
+                "head_sha": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{7,64}$"
+                }
+              },
+              "allOf": [
+                {
+                  "if": {
+                    "properties": {
+                      "auto_merge": {
+                        "const": true
+                      }
+                    },
+                    "required": [
+                      "auto_merge"
+                    ]
+                  },
+                  "then": {
+                    "properties": {
+                      "decision": {
+                        "const": "pass"
+                      },
+                      "shadow": {
+                        "const": false
+                      },
+                      "demoted": {
+                        "const": false
+                      }
+                    }
+                  }
+                },
+                {
+                  "if": {
+                    "properties": {
+                      "shadow": {
+                        "const": true
+                      }
+                    },
+                    "required": [
+                      "shadow"
+                    ]
+                  },
+                  "then": {
+                    "properties": {
+                      "auto_merge": {
+                        "const": false
+                      }
+                    }
+                  }
+                }
+              ]
+            }
+          },
+          "allOf": [
+            {
+              "description": "tier 2 never auto-merges",
+              "if": {
+                "properties": {
+                  "tier": {
+                    "properties": {
+                      "value": {
+                        "const": 2
+                      }
+                    }
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "gate": {
+                    "properties": {
+                      "auto_merge": {
+                        "const": false
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "description": "tier 1 auto-merge needs a computed score",
+              "if": {
+                "properties": {
+                  "tier": {
+                    "properties": {
+                      "value": {
+                        "const": 1
+                      }
+                    }
+                  },
+                  "gate": {
+                    "properties": {
+                      "auto_merge": {
+                        "const": true
+                      }
+                    }
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "risk_score": {
+                    "properties": {
+                      "reason": {
+                        "const": "computed"
+                      }
+                    },
+                    "required": [
+                      "human_if_score_gt",
+                      "preset"
+                    ]
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "hotfix_of": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "PR number this PR hotfixes (counted by the U1.c kill switch)"
+        },
+        "u2": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "run",
+            "human_confirmation",
+            "confirm_scope_hits"
+          ],
+          "description": "written by the repo skill /pr from precommit-review.json u2. CI recomputes confirm_scope hits from the PR diff; when this block is missing and a hit exists, CI treats the confirmation as not_obtained (tier 2). U2.non_interactive, user decision 2026-10-14; run is non_interactive when no human is present (no_human_run, revised 2026-10-27: AGENTIVE_HEADLESS=1, CI or GITHUB_ACTIONS, or permission_mode dontAsk in hook input that carries it; CLAUDE_CODE_REMOTE is not a signal; no signal = interactive).",
+          "properties": {
+            "run": {
+              "enum": [
+                "interactive",
+                "non_interactive",
+                "unknown"
+              ]
+            },
+            "human_confirmation": {
+              "enum": [
+                "not_required",
+                "obtained",
+                "not_obtained"
+              ]
+            },
+            "confirm_scope_hits": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "changed paths that match confirm_scope_globs"
+            }
+          },
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "run": {
+                    "enum": [
+                      "non_interactive",
+                      "unknown"
+                    ]
+                  }
+                },
+                "required": [
+                  "run"
+                ]
+              },
+              "then": {
+                "properties": {
+                  "human_confirmation": {
+                    "enum": [
+                      "not_required",
+                      "not_obtained"
+                    ]
+                  }
+                }
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "confirm_scope_hits": {
+                    "maxItems": 0
+                  }
+                },
+                "required": [
+                  "confirm_scope_hits"
+                ]
+              },
+              "then": {
+                "properties": {
+                  "human_confirmation": {
+                    "const": "not_required"
+                  }
+                }
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "confirm_scope_hits": {
+                    "minItems": 1
+                  }
+                },
+                "required": [
+                  "confirm_scope_hits"
+                ]
+              },
+              "then": {
+                "properties": {
+                  "human_confirmation": {
+                    "enum": [
+                      "obtained",
+                      "not_obtained"
+                    ]
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "review_round": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "CI review round of the current head (convergence)"
+        },
+        "chain": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "slug",
+            "stage"
+          ],
+          "description": "written by the repo skill /pr on every PR of an artifact chain (decisions.accepted CHAIN, user decision 2026-10-27): the slug of docs/plans/<slug>/ and the stage of this PR. RV1 also links a PR to a slug from its changed paths under docs/plans/<slug>/; both must agree",
+          "properties": {
+            "slug": {
+              "type": "string",
+              "pattern": "^(?!archive$)[a-z0-9]+(?:-[a-z0-9]+)*$",
+              "description": "kebab-case folder name under docs/plans/; archive is reserved"
+            },
+            "stage": {
+              "enum": [
+                "intent",
+                "spec",
+                "feature"
+              ],
+              "description": "intent = the PR adds or changes intent.md; spec = spec.md; feature = plan.md (first commit) and code"
+            }
+          }
+        }
+      },
+      "allOf": [
+        {
+          "description": "U2.non_interactive: not_obtained -> tier 2 with reason U2.non_interactive, never auto-merged",
+          "if": {
+            "required": [
+              "u2"
+            ],
+            "properties": {
+              "u2": {
+                "properties": {
+                  "human_confirmation": {
+                    "const": "not_obtained"
+                  }
+                },
+                "required": [
+                  "human_confirmation"
+                ]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "pipeline": {
+                "properties": {
+                  "tier": {
+                    "properties": {
+                      "value": {
+                        "const": 2
+                      },
+                      "reasons": {
+                        "contains": {
+                          "const": "U2.non_interactive"
+                        }
+                      }
+                    }
+                  },
+                  "gate": {
+                    "properties": {
+                      "auto_merge": {
+                        "const": false
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "description": "CHAIN: an intent or spec PR is always tier 2 with reason chain_approval (its merge is the human approval) and never auto-merges",
+          "if": {
+            "required": [
+              "chain",
+              "pipeline"
+            ],
+            "properties": {
+              "chain": {
+                "properties": {
+                  "stage": {
+                    "enum": [
+                      "intent",
+                      "spec"
+                    ]
+                  }
+                },
+                "required": [
+                  "stage"
+                ]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "pipeline": {
+                "properties": {
+                  "tier": {
+                    "properties": {
+                      "value": {
+                        "const": 2
+                      },
+                      "reasons": {
+                        "contains": {
+                          "const": "chain_approval"
+                        }
+                      }
+                    }
+                  },
+                  "gate": {
+                    "properties": {
+                      "auto_merge": {
+                        "const": false
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  },
+  "x-agentive-body-headings": {
+    "all_tiers": [
+      "## Verification",
+      "## Risk",
+      "## How to revert"
+    ],
+    "all_tiers_checked_by": "CI agentive-independence: every heading present, in this order",
+    "tier2": [
+      "## Explainer",
+      "## Verification",
+      "## Risk",
+      "## How to revert"
+    ],
+    "tier2_checked_by": "RV8 agentive-review-gate when RV4 assigns tier 2 (decisions.accepted EXPLAIN, user decision 2026-10-27; presence only since the final apply 2026-10-27); tier 0 and tier 1 do not need ## Explainer",
+    "tier2_explainer": {
+      "heading": "## Explainer",
+      "position": "the first level-2 heading (a line starting with '## ') of the body",
+      "ends_at": "the next level-2 heading",
+      "subheadings": [
+        "### Before",
+        "### After"
+      ],
+      "subheadings_order": "### Before before ### After",
+      "diagram_fence": "```mermaid",
+      "diagram_rule": "each subsection (### Before up to ### After, ### After up to the end of ## Explainer) holds at least one fenced block opened with ```mermaid and closed with ```",
+      "mermaid_syntax_checked": false,
+      "fail_reason": "explainer_missing",
+      "problems": [
+        "no_section",
+        "not_first",
+        "no_before",
+        "no_after",
+        "before_order",
+        "before_no_mermaid",
+        "after_no_mermaid"
+      ],
+      "next_action": "run /pr --explain (it rewrites only ## Explainer and updates the body with gh api); a body edit re-runs the gate (pull_request edited)",
+      "design_judgment": "the presence rules, the ref format and the problem codes are design judgment (설계 판단); GitHub renders the mermaid blocks (GitHub Docs · Creating diagrams)",
+      "chain_stage_before_after": "on a chain intent or spec PR, ### Before shows the current behavior and ### After the behavior the artifact proposes",
+      "check": "presence only (user decision 2026-10-27, option ②): ## Explainer is the first level-2 heading, ### Before then ### After inside it, each holding a ```mermaid block. Code refs and Mermaid syntax are not checked by CI",
+      "code_ref_format": {
+        "path_line": "(?<![\\w./-])((?:[\\w.-]+/)*[\\w-][\\w.-]*\\.[A-Za-z0-9]+|(?:[\\w.-]+/)+[\\w.-]+):([1-9][0-9]*)(?:-([1-9][0-9]*))?(?![\\w])",
+        "path_symbol": "(?<![\\w./-])((?:[\\w.-]+/)*[\\w-][\\w.-]*\\.[A-Za-z0-9]+|(?:[\\w.-]+/)+[\\w.-]+)#([A-Za-z_][\\w.]*)",
+        "rule": "writing rule only: every claim in ## Explainer cites code as path:line, path:start-end or path#symbol (head tree; code the PR removes from the base tree; on a chain intent or spec PR the artifact file itself or existing affected code). CI does not check or resolve the refs; RV5 correctness-reviewer checks the explainer, its refs and both flows against the diff"
+      },
+      "retired": [
+        "code_ref_rule (at least one path:line ref had to resolve in the head tree; removed 2026-10-27)",
+        "problem code no_head_code_ref",
+        "code_ref_patterns (renamed code_ref_format, writing rule only)"
+      ]
+    },
+    "risk_from_plan": "## Risk is filled from plan.md ## Risks when a chain plan exists (spec_stage.files.plan, user decision 2026-10-27, B1)"
+  },
+  "x-agentive-chain": {
+    "decision": "decisions.accepted CHAIN (user decision 2026-10-27); spec.spec_stage.chain",
+    "artifacts": {
+      "intent": "docs/plans/<slug>/intent.md",
+      "spec": "docs/plans/<slug>/spec.md",
+      "plan": "docs/plans/<slug>/plan.md"
+    },
+    "slug_pattern": "^(?!archive$)[a-z0-9]+(?:-[a-z0-9]+)*$",
+    "reserved_slugs": [
+      "archive"
+    ],
+    "link": "a PR belongs to <slug> when it adds or modifies a file under docs/plans/<slug>/ (git diff status A or M; intent.md -> stage intent, spec.md -> stage spec, plan.md -> stage feature) or when agentive-review.chain names it; a move into docs/plans/archive/<slug>/ is not a chain-stage change",
+    "always_human": {
+      "stages": [
+        "intent",
+        "spec"
+      ],
+      "reason": "chain_approval",
+      "configurable": false,
+      "checked_by": "RV2 always_human -> RV4 tier 2"
+    },
+    "order_rules": {
+      "spec": "intent.md of the slug exists in the base tree (git cat-file -e $BASE_SHA:docs/plans/<slug>/intent.md), else intent_not_on_base",
+      "feature": "spec.md of the slug exists in the base tree, else spec_not_on_base; plan.md of the slug exists in the head tree, else plan_not_in_head",
+      "one_artifact": "a PR that adds a new intent.md or a new spec.md changes no other path, else mixed_artifacts",
+      "one_slug": "a PR is linked to at most one slug, else multiple_slugs"
+    },
+    "checked_by": "RV1 (deterministic, review-report rv1.chain) -> RV8 block with reason chain_order (check failure); precommit profile reports only",
+    "problems": [
+      "intent_not_on_base",
+      "spec_not_on_base",
+      "plan_not_in_head",
+      "mixed_artifacts",
+      "multiple_slugs"
+    ],
+    "fail_reason": "chain_order",
+    "next_actions": {
+      "intent_not_on_base": "merge the intent PR (intent/<slug>) first, then run /chain-spec <slug>",
+      "spec_not_on_base": "merge the spec PR (spec/<slug>) first, then run /chain-plan <slug>",
+      "plan_not_in_head": "commit docs/plans/<slug>/plan.md as the first commit of feature/<slug> (/chain-plan <slug>)",
+      "mixed_artifacts": "split the PR: one artifact per PR",
+      "multiple_slugs": "split the PR: one slug per PR"
+    },
+    "not_a_safety_net": "PRs not linked to a chain are not checked for a missing spec (decisions.removed spec_ci_safety_net)",
+    "design_judgment": "the link rule, the problem codes, one artifact per PR (video, not official) and RV1/RV8 placement are design judgment (설계 판단); the chain and the human approvals between stages are official (Anthropic AI-native SDLC playbook, Claude Academy)"
+  }
+}

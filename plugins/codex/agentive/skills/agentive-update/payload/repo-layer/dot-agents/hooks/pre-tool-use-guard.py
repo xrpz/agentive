@@ -1,0 +1,44 @@
+#!/usr/bin/env python3
+# agentive-unit: rl.hooks
+# design: spec.guard, spec.enforcement.hooks.pre_tool_use_guard, spec.no_human_run, spec.handoff.writers
+"""PreToolUse guard (matcher Bash|PowerShell; Codex: Bash). Claude Code registers it with onFailure: block.
+
+deny rule  -> permissionDecision deny + `BLOCKED <id>: <reason>. NEXT: <next>` (every mode, never ask)
+ask rule   -> human present: no decision (the permissions.ask rule prompts; Codex: .codex/rules prompt)
+              no human (no_human_run): deny with a handoff reason + handoff file (reason ask_class_denied)
+Hooks never return ask (Codex PreToolUse ask is fail-open).
+"""
+import os
+import sys
+
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "lib"))
+from agentive import guard, handoff, hookio, nohuman  # noqa: E402
+
+
+def main(argv):
+    tool = "codex" if hookio.tool_arg(argv) == "codex" else "claude_code"
+    inp = hookio.read_input()
+    cmd = (inp.get("tool_input") or {}).get("command")
+    if not isinstance(cmd, str) or not cmd.strip():
+        return 0
+    root = hookio.root_from(inp)
+    cwd = inp.get("cwd") if os.path.isdir(inp.get("cwd") or "") else root
+    rules = guard.load_rules(root)
+    rule, text = guard.evaluate(cmd, rules, root, cwd, tool)
+    if rule is None:
+        return 0
+    if rule["decision"] == "ask" and not nohuman.no_human(hook_input=inp):
+        return 0
+    extra = ""
+    if rule["decision"] == "ask":
+        path = handoff.write(root, "ask_class_denied",
+                             failure_reason=f"guard rule {rule['id']} needs a human: {rule['reason']}",
+                             next_step=rule["next"], blocked_command=f"{text} (rule {rule['id']})")
+        extra = f" (no human present; handed off in {path})"
+    hookio.emit({"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "deny",
+                                        "permissionDecisionReason": guard.block_message(rule, extra)}})
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

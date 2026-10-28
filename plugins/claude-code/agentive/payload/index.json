@@ -1,0 +1,1078 @@
+{
+  "generated_by": "tools/generate.py",
+  "plugin": "agentive",
+  "version": "0.1.0",
+  "escape_rule": "template paths keep src/ escaping: a component 'dot-x' is '.x' in the user repo; install is the real path",
+  "entries": [
+    {
+      "unit": "rl.agents.reviewers",
+      "owner": "D",
+      "class": "whole",
+      "confirm_scope": [],
+      "f": "f-reviewers",
+      "install": ".agents/agents/classifier.md",
+      "template": "repo-layer/dot-agents/agents/classifier.md",
+      "executable": false
+    },
+    {
+      "unit": "rl.agents.reviewers",
+      "owner": "D",
+      "class": "whole",
+      "confirm_scope": [],
+      "f": "f-reviewers",
+      "install": ".agents/agents/coordinator.md",
+      "template": "repo-layer/dot-agents/agents/coordinator.md",
+      "executable": false
+    },
+    {
+      "unit": "rl.agents.reviewers",
+      "owner": "D",
+      "class": "whole",
+      "confirm_scope": [],
+      "f": "f-reviewers",
+      "install": ".agents/agents/correctness-reviewer.md",
+      "template": "repo-layer/dot-agents/agents/correctness-reviewer.md",
+      "executable": false
+    },
+    {
+      "unit": "rl.agents.reviewers",
+      "owner": "D",
+      "class": "whole",
+      "confirm_scope": [],
+      "f": "f-reviewers",
+      "install": ".agents/agents/raise-only.md",
+      "template": "repo-layer/dot-agents/agents/raise-only.md",
+      "executable": false
+    },
+    {
+      "unit": "rl.agents.reviewers",
+      "owner": "D",
+      "class": "whole",
+      "confirm_scope": [],
+      "f": "f-reviewers",
+      "install": ".agents/agents/security-reviewer.md",
+      "template": "repo-layer/dot-agents/agents/security-reviewer.md",
+      "executable": false
+    },
+    {
+      "unit": "rl.agents.reviewers",
+      "owner": "D",
+      "class": "whole",
+      "confirm_scope": [],
+      "f": "f-reviewers",
+      "install": ".agents/agents/testing-reviewer.md",
+      "template": "repo-layer/dot-agents/agents/testing-reviewer.md",
+      "executable": false
+    },
+    {
+      "unit": "rl.agents.reviewers",
+      "owner": "D",
+      "class": "whole",
+      "confirm_scope": [],
+      "f": "f-reviewers",
+      "install": ".agents/agents/verifier.md",
+      "template": "repo-layer/dot-agents/agents/verifier.md",
+      "executable": false
+    },
+    {
+      "unit": "rl.bin.agentive-lint",
+      "owner": "D",
+      "class": "whole",
+      "confirm_scope": [],
+      "f": "f-lint",
+      "install": ".agents/bin/agentive-lint",
+      "template": "repo-layer/dot-agents/bin/agentive-lint",
+      "executable": true
+    },
+    {
+      "unit": "rl.bin.agentive-review",
+      "owner": "D",
+      "class": "whole",
+      "confirm_scope": [],
+      "install": ".agents/bin/agentive-review",
+      "template": "repo-layer/dot-agents/bin/agentive-review",
+      "executable": true
+    },
+    {
+      "unit": "rl.bin.agentive-reviewer-eval",
+      "owner": "D",
+      "class": "whole",
+      "confirm_scope": [],
+      "install": ".agents/bin/agentive-reviewer-eval",
+      "template": "repo-layer/dot-agents/bin/agentive-reviewer-eval",
+      "executable": true
+    },
+    {
+      "unit": "rl.bin.verb",
+      "owner": "B",
+      "class": "whole",
+      "confirm_scope": [],
+      "f": "f-verb",
+      "install": ".agents/bin/verb",
+      "template": "repo-layer/dot-agents/bin/verb",
+      "executable": true
+    },
+    {
+      "unit": "rl.compat",
+      "owner": "A",
+      "class": "whole",
+      "confirm_scope": [],
+      "f": "f-compat",
+      "schema": "version-compat",
+      "install": ".agents/compat.yaml",
+      "template": "repo-layer/dot-agents/compat.yaml"
+    },
+    {
+      "unit": "rl.decisions",
+      "owner": "C",
+      "class": "whole",
+      "confirm_scope": [
+        "review_config"
+      ],
+      "f": "f-decisions",
+      "schema": "decisions",
+      "install": ".agents/decisions.yaml",
+      "template": "repo-layer/dot-agents/decisions.yaml",
+      "executable": false
+    },
+    {
+      "unit": "rl.guard",
+      "owner": "B",
+      "class": "whole",
+      "confirm_scope": [
+        "permissions"
+      ],
+      "f": "f-guard",
+      "schema": "guard-rules",
+      "install": ".agents/guard.yaml",
+      "template": "repo-layer/dot-agents/guard.yaml",
+      "executable": false
+    },
+    {
+      "unit": "rl.hooks",
+      "owner": "B",
+      "class": "whole",
+      "confirm_scope": [
+        "hooks"
+      ],
+      "install": ".agents/hooks/file-changed-dirty.py",
+      "template": "repo-layer/dot-agents/hooks/file-changed-dirty.py",
+      "executable": true
+    },
+    {
+      "unit": "rl.hooks",
+      "owner": "B",
+      "class": "whole",
+      "confirm_scope": [
+        "hooks"
+      ],
+      "install": ".agents/hooks/post-tool-use-lint.py",
+      "template": "repo-layer/dot-agents/hooks/post-tool-use-lint.py",
+      "executable": true
+    },
+    {
+      "unit": "rl.hooks",
+      "owner": "B",
+      "class": "whole",
+      "confirm_scope": [
+        "hooks"
+      ],
+      "install": ".agents/hooks/pre-tool-use-context-gate.py",
+      "template": "repo-layer/dot-agents/hooks/pre-tool-use-context-gate.py",
+      "executable": true
+    },
+    {
+      "unit": "rl.hooks",
+      "owner": "B",
+      "class": "whole",
+      "confirm_scope": [
+        "hooks"
+      ],
+      "install": ".agents/hooks/pre-tool-use-guard.py",
+      "template": "repo-layer/dot-agents/hooks/pre-tool-use-guard.py",
+      "executable": true
+    },
+    {
+      "unit": "rl.hooks",
+      "owner": "B",
+      "class": "whole",
+      "confirm_scope": [
+        "hooks"
+      ],
+      "install": ".agents/hooks/pre-tool-use-test-rewrite.py",
+      "template": "repo-layer/dot-agents/hooks/pre-tool-use-test-rewrite.py",
+      "executable": true
+    },
+    {
+      "unit": "rl.hooks",
+      "owner": "B",
+      "class": "whole",
+      "confirm_scope": [
+        "hooks"
+      ],
+      "install": ".agents/hooks/session-end-harvest.py",
+      "template": "repo-layer/dot-agents/hooks/session-end-harvest.py",
+      "executable": true
+    },
+    {
+      "unit": "rl.hooks",
+      "owner": "B",
+      "class": "whole",
+      "confirm_scope": [
+        "hooks"
+      ],
+      "install": ".agents/hooks/session-start-notice.py",
+      "template": "repo-layer/dot-agents/hooks/session-start-notice.py",
+      "executable": true
+    },
+    {
+      "unit": "rl.hooks",
+      "owner": "B",
+      "class": "whole",
+      "confirm_scope": [
+        "hooks"
+      ],
+      "install": ".agents/hooks/stop-verify.py",
+      "template": "repo-layer/dot-agents/hooks/stop-verify.py",
+      "executable": true
+    },
+    {
+      "unit": "lib.agentive",
+      "owner": "A",
+      "class": "whole",
+      "confirm_scope": [],
+      "install": ".agents/lib/agentive/__init__.py",
+      "template": "repo-layer/dot-agents/lib/agentive/__init__.py",
+      "executable": false
+    },
+    {
+      "unit": "lib.agentive",
+      "owner": "A",
+      "class": "whole",
+      "confirm_scope": [],
+      "install": ".agents/lib/agentive/ayaml.py",
+      "template": "repo-layer/dot-agents/lib/agentive/ayaml.py",
+      "executable": false
+    },
+    {
+      "unit": "lib.agentive",
+      "owner": "A",
+      "class": "whole",
+      "confirm_scope": [],
+      "install": ".agents/lib/agentive/common.py",
+      "template": "repo-layer/dot-agents/lib/agentive/common.py",
+      "executable": false
+    },
+    {
+      "unit": "lib.agentive",
+      "owner": "A",
+      "class": "whole",
+      "confirm_scope": [],
+      "install": ".agents/lib/agentive/distillq.py",
+      "template": "repo-layer/dot-agents/lib/agentive/distillq.py",
+      "executable": false
+    },
+    {
+      "unit": "lib.agentive",
+      "owner": "A",
+      "class": "whole",
+      "confirm_scope": [],
+      "install": ".agents/lib/agentive/gates.py",
+      "template": "repo-layer/dot-agents/lib/agentive/gates.py",
+      "executable": false
+    },
+    {
+      "unit": "lib.agentive",
+      "owner": "A",
+      "class": "whole",
+      "confirm_scope": [],
+      "install": ".agents/lib/agentive/gitgh.py",
+      "template": "repo-layer/dot-agents/lib/agentive/gitgh.py",
+      "executable": false
+    },
+    {
+      "unit": "lib.agentive",
+      "owner": "A",
+      "class": "whole",
+      "confirm_scope": [],
+      "install": ".agents/lib/agentive/guard.py",
+      "template": "repo-layer/dot-agents/lib/agentive/guard.py",
+      "executable": false
+    },
+    {
+      "unit": "lib.agentive",
+      "owner": "A",
+      "class": "whole",
+      "confirm_scope": [],
+      "install": ".agents/lib/agentive/handoff.py",
+      "template": "repo-layer/dot-agents/lib/agentive/handoff.py",
+      "executable": false
+    },
+    {
+      "unit": "lib.agentive",
+      "owner": "A",
+      "class": "whole",
+      "confirm_scope": [],
+      "install": ".agents/lib/agentive/hookio.py",
+      "template": "repo-layer/dot-agents/lib/agentive/hookio.py",
+      "executable": false
+    },
+    {
+      "unit": "lib.agentive",
+      "owner": "A",
+      "class": "whole",
+      "confirm_scope": [],
+      "install": ".agents/lib/agentive/lint/__init__.py",
+      "template": "repo-layer/dot-agents/lib/agentive/lint/__init__.py",
+      "executable": false
+    },
+    {
+      "unit": "lib.agentive",
+      "owner": "A",
+      "class": "whole",
+      "confirm_scope": [],
+      "install": ".agents/lib/agentive/lint/checks.py",
+      "template": "repo-layer/dot-agents/lib/agentive/lint/checks.py",
+      "executable": false
+    },
+    {
+      "unit": "lib.agentive",
+      "owner": "A",
+      "class": "whole",
+      "confirm_scope": [],
+      "install": ".agents/lib/agentive/nohuman.py",
+      "template": "repo-layer/dot-agents/lib/agentive/nohuman.py",
+      "executable": false
+    },
+    {
+      "unit": "lib.agentive",
+      "owner": "A",
+      "class": "whole",
+      "confirm_scope": [],
+      "install": ".agents/lib/agentive/prbody.py",
+      "template": "repo-layer/dot-agents/lib/agentive/prbody.py",
+      "executable": false
+    },
+    {
+      "unit": "lib.agentive",
+      "owner": "A",
+      "class": "whole",
+      "confirm_scope": [],
+      "install": ".agents/lib/agentive/prstate.py",
+      "template": "repo-layer/dot-agents/lib/agentive/prstate.py",
+      "executable": false
+    },
+    {
+      "unit": "lib.agentive",
+      "owner": "A",
+      "class": "whole",
+      "confirm_scope": [],
+      "install": ".agents/lib/agentive/review/__init__.py",
+      "template": "repo-layer/dot-agents/lib/agentive/review/__init__.py",
+      "executable": false
+    },
+    {
+      "unit": "lib.agentive",
+      "owner": "A",
+      "class": "whole",
+      "confirm_scope": [],
+      "install": ".agents/lib/agentive/review/config.py",
+      "template": "repo-layer/dot-agents/lib/agentive/review/config.py",
+      "executable": false
+    },
+    {
+      "unit": "lib.agentive",
+      "owner": "A",
+      "class": "whole",
+      "confirm_scope": [],
+      "install": ".agents/lib/agentive/review/evals.py",
+      "template": "repo-layer/dot-agents/lib/agentive/review/evals.py",
+      "executable": false
+    },
+    {
+      "unit": "lib.agentive",
+      "owner": "A",
+      "class": "whole",
+      "confirm_scope": [],
+      "install": ".agents/lib/agentive/review/findings.py",
+      "template": "repo-layer/dot-agents/lib/agentive/review/findings.py",
+      "executable": false
+    },
+    {
+      "unit": "lib.agentive",
+      "owner": "A",
+      "class": "whole",
+      "confirm_scope": [],
+      "install": ".agents/lib/agentive/review/github.py",
+      "template": "repo-layer/dot-agents/lib/agentive/review/github.py",
+      "executable": false
+    },
+    {
+      "unit": "lib.agentive",
+      "owner": "A",
+      "class": "whole",
+      "confirm_scope": [],
+      "install": ".agents/lib/agentive/review/gitio.py",
+      "template": "repo-layer/dot-agents/lib/agentive/review/gitio.py",
+      "executable": false
+    },
+    {
+      "unit": "lib.agentive",
+      "owner": "A",
+      "class": "whole",
+      "confirm_scope": [],
+      "install": ".agents/lib/agentive/review/independence.py",
+      "template": "repo-layer/dot-agents/lib/agentive/review/independence.py",
+      "executable": false
+    },
+    {
+      "unit": "lib.agentive",
+      "owner": "A",
+      "class": "whole",
+      "confirm_scope": [],
+      "install": ".agents/lib/agentive/review/killswitch.py",
+      "template": "repo-layer/dot-agents/lib/agentive/review/killswitch.py",
+      "executable": false
+    },
+    {
+      "unit": "lib.agentive",
+      "owner": "A",
+      "class": "whole",
+      "confirm_scope": [],
+      "install": ".agents/lib/agentive/review/pipeline.py",
+      "template": "repo-layer/dot-agents/lib/agentive/review/pipeline.py",
+      "executable": false
+    },
+    {
+      "unit": "lib.agentive",
+      "owner": "A",
+      "class": "whole",
+      "confirm_scope": [],
+      "install": ".agents/lib/agentive/review/post.py",
+      "template": "repo-layer/dot-agents/lib/agentive/review/post.py",
+      "executable": false
+    },
+    {
+      "unit": "lib.agentive",
+      "owner": "A",
+      "class": "whole",
+      "confirm_scope": [],
+      "install": ".agents/lib/agentive/review/pr_body.py",
+      "template": "repo-layer/dot-agents/lib/agentive/review/pr_body.py",
+      "executable": false
+    },
+    {
+      "unit": "lib.agentive",
+      "owner": "A",
+      "class": "whole",
+      "confirm_scope": [],
+      "install": ".agents/lib/agentive/review/rv1.py",
+      "template": "repo-layer/dot-agents/lib/agentive/review/rv1.py",
+      "executable": false
+    },
+    {
+      "unit": "lib.agentive",
+      "owner": "A",
+      "class": "whole",
+      "confirm_scope": [],
+      "install": ".agents/lib/agentive/review/rv2.py",
+      "template": "repo-layer/dot-agents/lib/agentive/review/rv2.py",
+      "executable": false
+    },
+    {
+      "unit": "lib.agentive",
+      "owner": "A",
+      "class": "whole",
+      "confirm_scope": [],
+      "install": ".agents/lib/agentive/review/rv3.py",
+      "template": "repo-layer/dot-agents/lib/agentive/review/rv3.py",
+      "executable": false
+    },
+    {
+      "unit": "lib.agentive",
+      "owner": "A",
+      "class": "whole",
+      "confirm_scope": [],
+      "install": ".agents/lib/agentive/review/rv4.py",
+      "template": "repo-layer/dot-agents/lib/agentive/review/rv4.py",
+      "executable": false
+    },
+    {
+      "unit": "lib.agentive",
+      "owner": "A",
+      "class": "whole",
+      "confirm_scope": [],
+      "install": ".agents/lib/agentive/review/rv7b.py",
+      "template": "repo-layer/dot-agents/lib/agentive/review/rv7b.py",
+      "executable": false
+    },
+    {
+      "unit": "lib.agentive",
+      "owner": "A",
+      "class": "whole",
+      "confirm_scope": [],
+      "install": ".agents/lib/agentive/review/rv8.py",
+      "template": "repo-layer/dot-agents/lib/agentive/review/rv8.py",
+      "executable": false
+    },
+    {
+      "unit": "lib.agentive",
+      "owner": "A",
+      "class": "whole",
+      "confirm_scope": [],
+      "install": ".agents/lib/agentive/review/tasks.py",
+      "template": "repo-layer/dot-agents/lib/agentive/review/tasks.py",
+      "executable": false
+    },
+    {
+      "unit": "lib.agentive",
+      "owner": "A",
+      "class": "whole",
+      "confirm_scope": [],
+      "install": ".agents/lib/agentive/review/util.py",
+      "template": "repo-layer/dot-agents/lib/agentive/review/util.py",
+      "executable": false
+    },
+    {
+      "unit": "lib.agentive",
+      "owner": "A",
+      "class": "whole",
+      "confirm_scope": [],
+      "install": ".agents/lib/agentive/state.py",
+      "template": "repo-layer/dot-agents/lib/agentive/state.py",
+      "executable": false
+    },
+    {
+      "unit": "lib.agentive",
+      "owner": "A",
+      "class": "whole",
+      "confirm_scope": [],
+      "install": ".agents/lib/agentive/verb.py",
+      "template": "repo-layer/dot-agents/lib/agentive/verb.py",
+      "executable": false
+    },
+    {
+      "unit": "rl.manifest",
+      "owner": "B",
+      "class": "whole",
+      "confirm_scope": [],
+      "f": "f-manifest",
+      "schema": "manifest",
+      "install": ".agents/manifest.yaml",
+      "template": "repo-layer/dot-agents/manifest.yaml",
+      "executable": false
+    },
+    {
+      "unit": "rl.rubric",
+      "owner": "C",
+      "class": "whole",
+      "confirm_scope": [],
+      "f": "f-rubric",
+      "schema": "rubric",
+      "install": ".agents/rubric.yaml",
+      "template": "repo-layer/dot-agents/rubric.yaml",
+      "executable": false
+    },
+    {
+      "unit": "rl.rules.structure",
+      "owner": "C",
+      "class": "whole",
+      "confirm_scope": [],
+      "f": "f-rules",
+      "when": "rule_packs.boundary",
+      "install": ".agents/rules/structure.md",
+      "template": "repo-layer/dot-agents/rules/structure.md",
+      "executable": false
+    },
+    {
+      "unit": "rl.skill.chain-intent",
+      "owner": "C",
+      "class": "whole",
+      "confirm_scope": [],
+      "f": "f-chain-skills",
+      "install": ".agents/skills/chain-intent/SKILL.md",
+      "template": "repo-layer/dot-agents/skills/chain-intent/SKILL.md",
+      "executable": false
+    },
+    {
+      "unit": "rl.skill.chain-intent",
+      "owner": "C",
+      "class": "whole",
+      "confirm_scope": [],
+      "f": "f-chain-skills",
+      "install": ".agents/skills/chain-intent/agents/openai.yaml",
+      "template": "repo-layer/dot-agents/skills/chain-intent/agents/openai.yaml",
+      "executable": false
+    },
+    {
+      "unit": "rl.skill.chain-stage-check",
+      "owner": "C",
+      "class": "whole",
+      "confirm_scope": [],
+      "f": "f-chain-skills",
+      "install": ".agents/skills/chain-intent/scripts/stage-check.sh",
+      "template": "repo-layer/dot-agents/skills/chain-stage-check.sh",
+      "executable": true
+    },
+    {
+      "unit": "rl.skill.chain-intent",
+      "owner": "C",
+      "class": "whole",
+      "confirm_scope": [],
+      "f": "f-chain-skills",
+      "install": ".agents/skills/chain-intent/templates/intent.md",
+      "template": "repo-layer/dot-agents/skills/chain-intent/templates/intent.md",
+      "executable": false
+    },
+    {
+      "unit": "rl.skill.chain-plan",
+      "owner": "C",
+      "class": "whole",
+      "confirm_scope": [],
+      "f": "f-chain-skills",
+      "install": ".agents/skills/chain-plan/SKILL.md",
+      "template": "repo-layer/dot-agents/skills/chain-plan/SKILL.md",
+      "executable": false
+    },
+    {
+      "unit": "rl.skill.chain-plan",
+      "owner": "C",
+      "class": "whole",
+      "confirm_scope": [],
+      "f": "f-chain-skills",
+      "install": ".agents/skills/chain-plan/agents/openai.yaml",
+      "template": "repo-layer/dot-agents/skills/chain-plan/agents/openai.yaml",
+      "executable": false
+    },
+    {
+      "unit": "rl.skill.chain-stage-check",
+      "owner": "C",
+      "class": "whole",
+      "confirm_scope": [],
+      "f": "f-chain-skills",
+      "install": ".agents/skills/chain-plan/scripts/stage-check.sh",
+      "template": "repo-layer/dot-agents/skills/chain-stage-check.sh",
+      "executable": true
+    },
+    {
+      "unit": "rl.skill.chain-plan",
+      "owner": "C",
+      "class": "whole",
+      "confirm_scope": [],
+      "f": "f-chain-skills",
+      "install": ".agents/skills/chain-plan/templates/plan.md",
+      "template": "repo-layer/dot-agents/skills/chain-plan/templates/plan.md",
+      "executable": false
+    },
+    {
+      "unit": "rl.skill.chain-spec",
+      "owner": "C",
+      "class": "whole",
+      "confirm_scope": [],
+      "f": "f-chain-skills",
+      "install": ".agents/skills/chain-spec/SKILL.md",
+      "template": "repo-layer/dot-agents/skills/chain-spec/SKILL.md",
+      "executable": false
+    },
+    {
+      "unit": "rl.skill.chain-spec",
+      "owner": "C",
+      "class": "whole",
+      "confirm_scope": [],
+      "f": "f-chain-skills",
+      "install": ".agents/skills/chain-spec/agents/openai.yaml",
+      "template": "repo-layer/dot-agents/skills/chain-spec/agents/openai.yaml",
+      "executable": false
+    },
+    {
+      "unit": "rl.skill.chain-stage-check",
+      "owner": "C",
+      "class": "whole",
+      "confirm_scope": [],
+      "f": "f-chain-skills",
+      "install": ".agents/skills/chain-spec/scripts/stage-check.sh",
+      "template": "repo-layer/dot-agents/skills/chain-stage-check.sh",
+      "executable": true
+    },
+    {
+      "unit": "rl.skill.chain-spec",
+      "owner": "C",
+      "class": "whole",
+      "confirm_scope": [],
+      "f": "f-chain-skills",
+      "install": ".agents/skills/chain-spec/templates/spec.md",
+      "template": "repo-layer/dot-agents/skills/chain-spec/templates/spec.md",
+      "executable": false
+    },
+    {
+      "unit": "rl.skill.distill",
+      "owner": "C",
+      "class": "whole",
+      "confirm_scope": [],
+      "f": "f-distill",
+      "install": ".agents/skills/distill/SKILL.md",
+      "template": "repo-layer/dot-agents/skills/distill/SKILL.md",
+      "executable": false
+    },
+    {
+      "unit": "rl.skill.distill",
+      "owner": "C",
+      "class": "whole",
+      "confirm_scope": [],
+      "f": "f-distill",
+      "install": ".agents/skills/distill/agents/openai.yaml",
+      "template": "repo-layer/dot-agents/skills/distill/agents/openai.yaml",
+      "executable": false
+    },
+    {
+      "unit": "rl.skill.distill",
+      "owner": "C",
+      "class": "whole",
+      "confirm_scope": [],
+      "f": "f-distill",
+      "install": ".agents/skills/distill/scripts/queue-read.sh",
+      "template": "repo-layer/dot-agents/skills/distill/scripts/queue-read.sh",
+      "executable": true
+    },
+    {
+      "unit": "rl.skill.janitor",
+      "owner": "C",
+      "class": "whole",
+      "confirm_scope": [],
+      "f": "f-janitor",
+      "install": ".agents/skills/janitor/SKILL.md",
+      "template": "repo-layer/dot-agents/skills/janitor/SKILL.md",
+      "executable": false
+    },
+    {
+      "unit": "rl.skill.janitor",
+      "owner": "C",
+      "class": "whole",
+      "confirm_scope": [],
+      "f": "f-janitor",
+      "install": ".agents/skills/janitor/agents/openai.yaml",
+      "template": "repo-layer/dot-agents/skills/janitor/agents/openai.yaml",
+      "executable": false
+    },
+    {
+      "unit": "rl.skill.janitor",
+      "owner": "C",
+      "class": "whole",
+      "confirm_scope": [],
+      "f": "f-janitor",
+      "install": ".agents/skills/janitor/scripts/gate.sh",
+      "template": "repo-layer/dot-agents/skills/janitor/scripts/gate.sh",
+      "executable": true
+    },
+    {
+      "unit": "rl.skill.pr-feedback",
+      "owner": "C",
+      "class": "whole",
+      "confirm_scope": [],
+      "f": "f-pr-feedback",
+      "install": ".agents/skills/pr-feedback/SKILL.md",
+      "template": "repo-layer/dot-agents/skills/pr-feedback/SKILL.md",
+      "executable": false
+    },
+    {
+      "unit": "rl.skill.pr-feedback",
+      "owner": "C",
+      "class": "whole",
+      "confirm_scope": [],
+      "f": "f-pr-feedback",
+      "install": ".agents/skills/pr-feedback/agents/openai.yaml",
+      "template": "repo-layer/dot-agents/skills/pr-feedback/agents/openai.yaml",
+      "executable": false
+    },
+    {
+      "unit": "rl.skill.pr-feedback",
+      "owner": "C",
+      "class": "whole",
+      "confirm_scope": [],
+      "f": "f-pr-feedback",
+      "install": ".agents/skills/pr-feedback/scripts/pr-state.sh",
+      "template": "repo-layer/dot-agents/skills/pr-feedback/scripts/pr-state.sh",
+      "executable": true
+    },
+    {
+      "unit": "rl.skill.pr",
+      "owner": "C",
+      "class": "whole",
+      "confirm_scope": [],
+      "f": "f-pr",
+      "install": ".agents/skills/pr/SKILL.md",
+      "template": "repo-layer/dot-agents/skills/pr/SKILL.md",
+      "executable": false
+    },
+    {
+      "unit": "rl.skill.pr",
+      "owner": "C",
+      "class": "whole",
+      "confirm_scope": [],
+      "f": "f-pr",
+      "install": ".agents/skills/pr/agents/openai.yaml",
+      "template": "repo-layer/dot-agents/skills/pr/agents/openai.yaml",
+      "executable": false
+    },
+    {
+      "unit": "rl.skill.pr",
+      "owner": "C",
+      "class": "whole",
+      "confirm_scope": [],
+      "f": "f-pr",
+      "install": ".agents/skills/pr/scripts/pr-body.sh",
+      "template": "repo-layer/dot-agents/skills/pr/scripts/pr-body.sh",
+      "executable": true
+    },
+    {
+      "unit": "rl.skill.precommit-review",
+      "owner": "C",
+      "class": "whole",
+      "confirm_scope": [],
+      "f": "f-precommit",
+      "install": ".agents/skills/precommit-review/SKILL.md",
+      "template": "repo-layer/dot-agents/skills/precommit-review/SKILL.md",
+      "executable": false
+    },
+    {
+      "unit": "rl.skill.precommit-review",
+      "owner": "C",
+      "class": "whole",
+      "confirm_scope": [],
+      "f": "f-precommit",
+      "install": ".agents/skills/precommit-review/agents/openai.yaml",
+      "template": "repo-layer/dot-agents/skills/precommit-review/agents/openai.yaml",
+      "executable": false
+    },
+    {
+      "unit": "rl.skill.verify",
+      "owner": "C",
+      "class": "whole",
+      "confirm_scope": [],
+      "f": "f-verify",
+      "install": ".agents/skills/verify/SKILL.md",
+      "template": "repo-layer/dot-agents/skills/verify/SKILL.md",
+      "executable": false
+    },
+    {
+      "unit": "rl.skill.verify",
+      "owner": "C",
+      "class": "whole",
+      "confirm_scope": [],
+      "f": "f-verify",
+      "install": ".agents/skills/verify/agents/openai.yaml",
+      "template": "repo-layer/dot-agents/skills/verify/agents/openai.yaml",
+      "executable": false
+    },
+    {
+      "unit": "rl.claude.settings",
+      "owner": "B",
+      "class": "whole",
+      "confirm_scope": [
+        "claude_settings",
+        "hooks",
+        "permissions"
+      ],
+      "f": "f-settings",
+      "install": ".claude/settings.json",
+      "template": "repo-layer/dot-claude/settings.json",
+      "executable": false
+    },
+    {
+      "unit": "rl.codex.config",
+      "owner": "B",
+      "class": "whole",
+      "confirm_scope": [
+        "codex_dir"
+      ],
+      "f": "f-codex-config",
+      "install": ".codex/config.toml",
+      "template": "repo-layer/dot-codex/config.toml",
+      "executable": false
+    },
+    {
+      "unit": "rl.codex.hooks",
+      "owner": "B",
+      "class": "whole",
+      "confirm_scope": [
+        "codex_dir",
+        "hooks"
+      ],
+      "f": "f-codex-hooks",
+      "install": ".codex/hooks.json",
+      "template": "repo-layer/dot-codex/hooks.json",
+      "executable": false
+    },
+    {
+      "unit": "rl.codex.rules-check",
+      "owner": "B",
+      "class": "whole",
+      "confirm_scope": [
+        "codex_dir"
+      ],
+      "f": "f-codex-rules",
+      "install": ".codex/rules/agentive-execpolicy-check.txt",
+      "template": "repo-layer/dot-codex/rules/agentive-execpolicy-check.txt",
+      "executable": false
+    },
+    {
+      "unit": "rl.codex.rules",
+      "owner": "B",
+      "class": "whole",
+      "confirm_scope": [
+        "codex_dir",
+        "permissions"
+      ],
+      "f": "f-codex-rules",
+      "install": ".codex/rules/agentive.rules",
+      "template": "repo-layer/dot-codex/rules/agentive.rules",
+      "executable": false
+    },
+    {
+      "unit": "rl.ci.agentive-lint",
+      "owner": "D",
+      "class": "whole",
+      "confirm_scope": [
+        "ci"
+      ],
+      "f": "f-ci",
+      "install": ".github/workflows/agentive-lint.yml",
+      "template": "repo-layer/dot-github/workflows/agentive-lint.yml",
+      "executable": false
+    },
+    {
+      "unit": "rl.ci.agentive-review",
+      "owner": "D",
+      "class": "whole",
+      "confirm_scope": [
+        "ci"
+      ],
+      "f": "f-ci",
+      "install": ".github/workflows/agentive-review.yml",
+      "template": "repo-layer/dot-github/workflows/agentive-review.yml",
+      "executable": false
+    },
+    {
+      "unit": "rl.ci.reviewer-eval",
+      "owner": "D",
+      "class": "whole",
+      "confirm_scope": [
+        "ci"
+      ],
+      "f": "f-ci",
+      "install": ".github/workflows/reviewer-eval.yml",
+      "template": "repo-layer/dot-github/workflows/reviewer-eval.yml",
+      "executable": false
+    },
+    {
+      "unit": "rl.gitignore",
+      "owner": "C",
+      "class": "shared",
+      "confirm_scope": [],
+      "install": ".gitignore",
+      "region": "state",
+      "template": "repo-layer/dot-gitignore.regions/state.txt"
+    },
+    {
+      "unit": "rl.agents-md",
+      "owner": "C",
+      "class": "shared",
+      "confirm_scope": [],
+      "f": "f-agents-md",
+      "install": "AGENTS.md",
+      "region": "context",
+      "template": "repo-layer/AGENTS.md.regions/context.md"
+    },
+    {
+      "unit": "rl.agents-md",
+      "owner": "C",
+      "class": "shared",
+      "confirm_scope": [],
+      "f": "f-agents-md",
+      "install": "AGENTS.md",
+      "region": "path-rules",
+      "template": "repo-layer/AGENTS.md.regions/path-rules.md"
+    },
+    {
+      "unit": "rl.claude-md",
+      "owner": "C",
+      "class": "shared",
+      "confirm_scope": [],
+      "f": "f-claude-md",
+      "install": "CLAUDE.md",
+      "region": "imports",
+      "template": "repo-layer/CLAUDE.md.regions/imports.md"
+    },
+    {
+      "unit": "rl.review-copy",
+      "owner": "C",
+      "class": "whole",
+      "confirm_scope": [],
+      "f": "f-review-criteria",
+      "when": "review.managed_code_review_copy",
+      "install": "REVIEW.md",
+      "template": "repo-layer/REVIEW.md",
+      "executable": false
+    },
+    {
+      "unit": "rl.code-review",
+      "owner": "C",
+      "class": "shared",
+      "confirm_scope": [],
+      "f": "f-review-criteria",
+      "schema": "review-rules",
+      "install": "code_review.md",
+      "region": "rules",
+      "template": "repo-layer/code_review.md.regions/rules.md"
+    },
+    {
+      "unit": "rl.docs",
+      "owner": "C",
+      "class": "whole",
+      "confirm_scope": [],
+      "f": "f-adr",
+      "install": "docs/adr/0000-template.md",
+      "template": "repo-layer/docs/adr/0000-template.md",
+      "executable": false
+    },
+    {
+      "unit": "rl.docs",
+      "owner": "C",
+      "class": "whole",
+      "confirm_scope": [],
+      "f": "f-adr",
+      "install": "docs/features/.gitkeep",
+      "template": "repo-layer/docs/features/dot-gitkeep",
+      "executable": false
+    },
+    {
+      "unit": "rl.docs",
+      "owner": "C",
+      "class": "whole",
+      "confirm_scope": [],
+      "f": "f-adr",
+      "install": "docs/guides/.gitkeep",
+      "template": "repo-layer/docs/guides/dot-gitkeep",
+      "executable": false
+    },
+    {
+      "unit": "rl.docs",
+      "owner": "C",
+      "class": "whole",
+      "confirm_scope": [],
+      "f": "f-adr",
+      "install": "docs/system/.gitkeep",
+      "template": "repo-layer/docs/system/dot-gitkeep",
+      "executable": false
+    },
+    {
+      "unit": "rl.evals.reviewer-readme",
+      "owner": "D",
+      "class": "whole",
+      "confirm_scope": [],
+      "install": "evals/reviewer/README.md",
+      "template": "repo-layer/evals/reviewer/README.md",
+      "executable": false
+    }
+  ]
+}
