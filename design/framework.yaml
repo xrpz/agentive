@@ -764,7 +764,8 @@ spec:
     optional_items: {maxTurns: deferred, dropped: [updatedToolOutput filter, subagent omitClaudeMd, Codex default_subagent_model in the repo layer, task-brief script]}
     headless:
       rule: "headless runs (`claude -p`) and Routines runs start a fresh session each time, not /loop"
-      standard_cmd: "AGENTIVE_HEADLESS=1 claude -p \"<prompt>\" --permission-mode dontAsk --allowedTools \"Read,Edit,Write,Glob,Grep,Bash(.agents/bin/verb *),Bash(git add *),Bash(git commit *),Bash(git push *),Bash(gh api *)\" --max-budget-usd <n> --output-format json"
+      standard_cmd: "AGENTIVE_HEADLESS=1 claude -p \"<prompt>\" --permission-mode dontAsk --allowedTools \"Read,Edit,Write,Glob,Grep,Bash(.agents/bin/verb *),Bash(git add *),Bash(git commit *),Bash(git push *),Bash(gh api *),Bash(sh .agents/skills/*),Bash(git switch *),Bash(git fetch *)\" --max-budget-usd <n> --output-format json"
+      standard_cmd_revised: "2026-10-29 user ('그냥 한번에 추가'): added Bash(sh .agents/skills/*), Bash(git switch *), Bash(git fetch *) so repo-skill scripts (/chain-* stage-check.sh, /pr, /pr-feedback, /distill, janitor gate.sh) and branch switching run under dontAsk; the push target is still judged by the guard hook (guard.allowed_without_rule)"
       routines: "Routines runs take none of these flags: connect the minimum repos, network and connectors; set AGENTIVE_HEADLESS=1 in the routine's own cloud environment to mark the run as having no human (no_human_run.routines); Routines PRs are opened by the connected user's GitHub account, so that user cannot approve them [S75]"
       env: {AGENTIVE_HEADLESS: "1 (no_human_run signal; written at the start of standard_cmd)", CLAUDE_CODE_RETRY_WATCHDOG: "1"}
       codex: "codex exec is read-only by default; no CI workflow is shipped for it [S100]"
