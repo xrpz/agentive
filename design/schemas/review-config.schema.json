@@ -1,0 +1,457 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://fw.local/schemas/review-config.schema.json",
+  "title": ".agents/framework.yaml review.pipeline (code-review pipeline RV1-RV8 + RV7b: the switches that are left, profiles, criteria scope, tier-1 auto-merge mode)",
+  "description": "Accepted designs RV and RV7b (2026-10-14), revised 2026-10-27 (N-review N-D1..N-D5, big-tech review decisions). Every stage always runs: there are no stage on/off switches (N-D3 N1-e). What is left: RV1 exclusions and required checks, RV3 llm_layer, RV5 reviewers and shadow_reviewers, the precommit reviewer list, auto_merge.tier1 (shadow | on | off), criteria scope and rules_file. The rubric (U6) lives in .agents/rubric.yaml + .agents/custom/.agents/rubric.yaml (schema rubric), not here. Kill-switch numbers (2 within 7 days, per tier and source) are constants. Review criteria scope (C-058): a criteria file applies to a changed file only when its directory is an ancestor; one kind per file; no applicable file is normal.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "stages": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "RV1": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "exclude_globs": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "added to the agentive manifest paths.generated and paths.vendor"
+            },
+            "require_checks": {
+              "type": "array",
+              "items": {
+                "enum": [
+                  "lint",
+                  "typecheck",
+                  "test",
+                  "build",
+                  "ci"
+                ]
+              },
+              "uniqueItems": true,
+              "default": [
+                "lint",
+                "typecheck",
+                "test"
+              ]
+            }
+          }
+        },
+        "RV3": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "llm_layer": {
+              "type": "boolean",
+              "default": true,
+              "description": "the LLM layer classifies changes the rules leave undecided (it may never pick a tier-0 class). false -> an undecided change is class other and goes to a human"
+            }
+          }
+        },
+        "RV5": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "reviewers": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/reviewer_id"
+              },
+              "uniqueItems": true,
+              "minItems": 2,
+              "default": [
+                "correctness-reviewer",
+                "security-reviewer",
+                "testing-reviewer"
+              ],
+              "contains": {
+                "const": "correctness-reviewer"
+              },
+              "description": "D1 (2026-10-27): correctness-reviewer and security-reviewer always run; testing-reviewer runs only when test files change. correctness-reviewer and security-reviewer cannot be removed",
+              "allOf": [
+                {
+                  "contains": {
+                    "const": "security-reviewer"
+                  }
+                }
+              ]
+            },
+            "shadow_reviewers": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/reviewer_id"
+              },
+              "uniqueItems": true,
+              "default": [],
+              "description": "reviewers that report non-blocking findings only (shadow mode) until a human removes them from this list (P6/P7)"
+            },
+            "context": {
+              "const": "fresh",
+              "default": "fresh",
+              "description": "independence rule (Z5); not configurable"
+            }
+          }
+        },
+        "RV8": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "check_name": {
+              "const": "agentive-review-gate",
+              "default": "agentive-review-gate"
+            },
+            "coverage": {
+              "type": "object",
+              "additionalProperties": false,
+              "description": "gate-only new-code coverage condition (blocks auto-merge, does not raise the tier); needs the agentive manifest verbs.test.coverage_report, otherwise skipped with reason coverage_unavailable",
+              "properties": {
+                "min_new_code_pct": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 100,
+                  "default": 80
+                },
+                "exempt_new_lines_lt": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "default": 20
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "profiles": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "precommit": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "stages": {
+              "const": [
+                "RV1",
+                "RV2",
+                "RV5"
+              ],
+              "default": [
+                "RV1",
+                "RV2",
+                "RV5"
+              ],
+              "description": "constant (N-D3 N1-f): CI computes RV3/RV4"
+            },
+            "reviewers": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/reviewer_id"
+              },
+              "uniqueItems": true,
+              "minItems": 1,
+              "default": [
+                "correctness-reviewer"
+              ]
+            }
+          }
+        },
+        "ci": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "stages": {
+              "const": [
+                "RV1",
+                "RV2",
+                "RV3",
+                "RV4",
+                "RV7b",
+                "RV5",
+                "RV7",
+                "RV6",
+                "RV8"
+              ],
+              "default": [
+                "RV1",
+                "RV2",
+                "RV3",
+                "RV4",
+                "RV7b",
+                "RV5",
+                "RV7",
+                "RV6",
+                "RV8"
+              ],
+              "description": "constant order (N-D2 option A, N-D3 N1-c): generate -> verify -> dedupe/rank -> post"
+            }
+          }
+        }
+      }
+    },
+    "rules_file": {
+      "type": "string",
+      "default": "code_review.md",
+      "description": "file that holds the ```yaml agentive-review-rules``` block: the single review criteria file (U4=C). RV2-RV4 read its rules block from the base commit."
+    },
+    "ci_tool": {
+      "enum": [
+        "claude",
+        "codex"
+      ],
+      "description": "CITOOL (user decision 2026-10-29): the tool that runs the CI AI review job (anthropics/claude-code-action or openai/codex-action) and the reviewer eval. Optional: absent means the tool that ran init (agentive manifest framework.init_tool; a manifest without it counts as claude). Set it only to run CI on a different tool than the one that ran init; the next /agentive:update renders the ai-review job and the reviewer-eval install and secret lines for it (secret ANTHROPIC_API_KEY or CLAUDE_CODE_OAUTH_TOKEN for claude, see ci_auth; OPENAI_API_KEY for codex). The reviewer definitions are the same single source for both tools."
+    },
+    "ci_auth": {
+      "enum": [
+        "both",
+        "api_key",
+        "oauth_token"
+      ],
+      "description": "CIAUTH (user decision 2026-10-30): which Claude credential the claude CI path passes (the ai-review LLM step and the reviewer-eval run). Optional: absent means both. both = the secrets CLAUDE_CODE_OAUTH_TOKEN (a Claude Pro, Max, Team or Enterprise subscription token from `claude setup-token`, action input claude_code_oauth_token) and ANTHROPIC_API_KEY (a Claude Console API key, action input anthropic_api_key) are both rendered, OAuth token first (E2E-12, user 2026-10-30): the API key is passed only when the CLAUDE_CODE_OAUTH_TOKEN secret is empty (a workflow expression), because Claude Code itself would use the API key when both are set. api_key or oauth_token passes only that one, as is. The next /agentive:update renders it. Ignored on the codex path (OPENAI_API_KEY)."
+    },
+    "auto_merge": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "tier1": {
+          "enum": [
+            "shadow",
+            "on",
+            "off"
+          ],
+          "description": "DEPRECATED and ignored since DEFAULTS (2026-10-29): replaced by review.auto_merge (shadow, the old default, is low_risk; on is low_and_medium_risk; off keeps tier 1 with a human). Kept so that a v0.1.0 file validates; delete the key"
+        },
+        "kill_switch": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "U1.c constants; shown so that a config trying to change them is rejected",
+          "properties": {
+            "count": {
+              "const": 2
+            },
+            "window_days": {
+              "const": 7
+            },
+            "scope": {
+              "const": "tier_and_source"
+            },
+            "state_label": {
+              "const": "agentive:auto-merge-demoted"
+            },
+            "reenable": {
+              "const": "human_closes_state_issue"
+            }
+          }
+        }
+      },
+      "description": "Only the kill-switch constants live here since DEFAULTS (user 2026-10-29): whether and what auto-merges is the plain key review.auto_merge in .agents/framework.yaml (project-config), default low_risk (tier 0 on, tier 1 shadow). tier1 is the key of v0.1.0: it is accepted so that an old file still validates, ignored by the gate, and /agentive:update reports it"
+    },
+    "criteria": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Which criteria file governs a changed file (user decision 2026-10-14, C-058). The three rules are fixed by the decision; only fallback_files is a free setting.",
+      "properties": {
+        "scope": {
+          "const": "ancestor_directory"
+        },
+        "one_kind_per_file": {
+          "const": true
+        },
+        "no_applicable_file": {
+          "const": "normal"
+        },
+        "fallback_files": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "CLAUDE.md",
+              "AGENTS.md"
+            ]
+          },
+          "default": [
+            "CLAUDE.md",
+            "AGENTS.md"
+          ]
+        }
+      }
+    }
+  },
+  "$defs": {
+    "stage_id": {
+      "enum": [
+        "RV1",
+        "RV2",
+        "RV3",
+        "RV4",
+        "RV5",
+        "RV6",
+        "RV7",
+        "RV7b",
+        "RV8"
+      ]
+    },
+    "reviewer_id": {
+      "enum": [
+        "correctness-reviewer",
+        "security-reviewer",
+        "testing-reviewer"
+      ],
+      "description": "D1 (2026-10-27), naming '<axis>-reviewer'"
+    },
+    "criteria_entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "files"
+      ],
+      "properties": {
+        "kind": {
+          "enum": [
+            "dedicated",
+            "fallback",
+            "none"
+          ]
+        },
+        "sources": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": "criteria files that govern the listed changed files (repo-relative); absent when kind is none"
+        },
+        "files": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": "changed files (repo-relative)"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "none"
+              }
+            }
+          },
+          "then": {
+            "not": {
+              "required": [
+                "sources"
+              ]
+            }
+          },
+          "else": {
+            "required": [
+              "sources"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "fallback"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "sources": {
+                "items": {
+                  "pattern": "(^|/)(CLAUDE|AGENTS)\\.md$"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "criteria_map": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/criteria_entry"
+      },
+      "description": "Result of the RV1 criteria mapping: which criteria file governed which changed files. Each changed file appears in exactly one entry and every source is in an ancestor directory of its files (JSON Schema cannot express either; the pipeline checks them). A file with kind none is a normal result."
+    },
+    "review_tool": {
+      "enum": [
+        "claude_code",
+        "codex",
+        "other"
+      ],
+      "description": "the tool that ran the review, read from the environment (--tool, AGENTIVE_TOOL, CLAUDECODE) or from the CI tool; never a constant (INDEPCI, 2026-10-29)"
+    },
+    "review_executed_by": {
+      "enum": [
+        "subagent",
+        "process",
+        "self",
+        "unknown"
+      ],
+      "description": "how the review ran: subagent = a subagent of the implementer's tool (local), process = a separate process or CI job, self = the orchestrator did the task itself (the precommit-review fallback), unknown = not reported (Codex local)"
+    },
+    "review_attestation": {
+      "enum": [
+        "hook_observed",
+        "self_reported",
+        "ci_job"
+      ],
+      "description": "who vouches for the record: hook_observed = a SubagentStart or SubagentStop hook saw the subagent (.agents/state/subagents.jsonl); self_reported = the orchestrator says so; ci_job = the CI job itself produced the review. Local records are advisory; only ci_job records are enforced (agentive-independence)"
+    },
+    "review_context": {
+      "enum": [
+        "isolated",
+        "shared",
+        "unverified"
+      ],
+      "description": "isolated = separate from the implementer's context: a hook-observed subagent (local) or a review produced by the CI job; shared = the same context (self); unverified = nobody could observe it. Replaces the constant fresh"
+    },
+    "review_self_reason": {
+      "enum": [
+        "no_agent_tool",
+        "spawn_failed"
+      ],
+      "description": "why a local review was done by the orchestrator itself (executed_by self): no_agent_tool = the conversation had no tool to start a subagent, spawn_failed = starting it failed. Written by the precommit-review orchestrator in the task meta (reason); advisory like the rest of the local record (decisions.accepted PRECOMMITINLINE, E2E-17, 2026-10-31)"
+    },
+    "ci_run": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "run_id",
+        "run_attempt",
+        "sha"
+      ],
+      "properties": {
+        "run_id": {
+          "type": "string",
+          "description": "GITHUB_RUN_ID of the run whose ai-review job produced the review"
+        },
+        "run_attempt": {
+          "type": "string",
+          "description": "GITHUB_RUN_ATTEMPT"
+        },
+        "sha": {
+          "type": "string",
+          "description": "the PR head sha the review was made for; agentive-independence accepts a review only when it equals the PR head sha"
+        }
+      },
+      "description": "where a CI review came from (INDEPCI); the action's session_id output goes into the record's session_id when the action returns one"
+    }
+  }
+}

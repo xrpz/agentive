@@ -1,0 +1,359 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://fw.local/schemas/framework-repo-config.schema.json",
+  "title": "framework.yaml in the framework repo: plugin name and framework-level user decisions",
+  "description": "Split from framework-config on 2026-10-27 (N-D8). source_format, selftest.sample_repos, versioning.mode, codex.distribution and the other knobs without an implemented alternative are constants. The value shapes of U3 and U4 live in $defs (moved from the retired decisions.schema.json, DEFAULTS 2026-10-29: the project file .agents/decisions.yaml no longer exists).",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "plugin": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "default": "agentive"
+        },
+        "marketplace_name": {
+          "type": "string"
+        }
+      },
+      "description": "D14"
+    },
+    "decisions": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "framework-level user-owned decisions (framework repo only): U3 author confirmation scope before commit in a local Claude Code editing session (decided B on 2026-10-14 with confirm_scope and self_tests), U4 review criteria files (decided C on 2026-10-14: one file code_review.md referenced from AGENTS.md, REVIEW.md copy opt-in via review.managed_code_review_copy, asked at init as a plain yes/no with default No since C-058). U5 (interim behavior while U2 is null) is obsolete since U2 was decided on 2026-10-14 and is not recorded here",
+      "properties": {
+        "U3": {
+          "$ref": "#/$defs/u3"
+        },
+        "U4": {
+          "$ref": "#/$defs/u4"
+        }
+      }
+    }
+  },
+  "$defs": {
+    "u3": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "value",
+        "decided_by"
+      ],
+      "description": "U3 (framework repo only; framework.yaml decisions.U3): in a local Claude Code session started by the framework author, what needs the author before commit. Decided B on 2026-10-14: confirm_scope [hooks, permissions, sandbox, security, release]; every other change is committed by Claude after all self_tests [generate_check, schema_validation, sample_repo_tests] pass. A (confirm every change) and C (no confirmation, self-tests only) take no confirm_scope. Any decided value requires the three self-tests.",
+      "properties": {
+        "value": {
+          "enum": [
+            "A",
+            "B",
+            "C",
+            null
+          ]
+        },
+        "decided_by": {
+          "enum": [
+            "user",
+            null
+          ]
+        },
+        "decided_at": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time"
+        },
+        "note": {
+          "type": "string"
+        },
+        "confirm_scope": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "hooks",
+              "permissions",
+              "sandbox",
+              "security",
+              "release"
+            ]
+          },
+          "uniqueItems": true,
+          "description": "U3=B: change categories that need the author before commit (release = the version-bump commit)"
+        },
+        "self_tests": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "generate_check",
+              "schema_validation",
+              "sample_repo_tests"
+            ]
+          },
+          "uniqueItems": true,
+          "description": "self-tests that must pass before Claude commits; run only when the framework is edited (locally, CI on pull_request), never on a schedule"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "value": {
+                "const": null
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "decided_by": {
+                "const": null
+              }
+            },
+            "not": {
+              "anyOf": [
+                {
+                  "required": [
+                    "confirm_scope"
+                  ]
+                },
+                {
+                  "required": [
+                    "self_tests"
+                  ]
+                }
+              ]
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "value": {
+                "enum": [
+                  "A",
+                  "B",
+                  "C"
+                ]
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "self_tests"
+            ],
+            "properties": {
+              "decided_by": {
+                "const": "user"
+              },
+              "self_tests": {
+                "const": [
+                  "generate_check",
+                  "schema_validation",
+                  "sample_repo_tests"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "value": {
+                "const": "B"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "confirm_scope"
+            ],
+            "properties": {
+              "confirm_scope": {
+                "const": [
+                  "hooks",
+                  "permissions",
+                  "sandbox",
+                  "security",
+                  "release"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "value": {
+                "enum": [
+                  "A",
+                  "C"
+                ]
+              }
+            }
+          },
+          "then": {
+            "not": {
+              "required": [
+                "confirm_scope"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "u4": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "value",
+        "decided_by"
+      ],
+      "description": "U4 (framework repo only; framework.yaml decisions.U4): how the review criteria are kept. Decided C on 2026-10-14: one repo-owned file code_review.md referenced from AGENTS.md (criteria_file, referenced_from); both Claude Code and Codex reviewers read it, with no per-tool copies. A REVIEW.md copy for Claude managed Code Review (Team/Enterprise research preview) exists only as an opt-in: managed_code_review_copy_default is false and /agentive:init asks a plain yes/no whether to generate it (default answer No; the only question init asks, C-059) and stores the answer in .agents/framework.yaml review.managed_code_review_copy; /agentive:update never asks. CLAUDE.md and AGENTS.md act as the fallback criteria only for changed files the criteria file does not govern: a criteria file applies only from an ancestor directory of the changed file, a changed file is never evaluated against both, and a file with no applicable criteria is a normal result (review-config criteria). A and B take none of the C fields.",
+      "properties": {
+        "value": {
+          "enum": [
+            "A",
+            "B",
+            "C",
+            null
+          ]
+        },
+        "decided_by": {
+          "enum": [
+            "user",
+            null
+          ]
+        },
+        "decided_at": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time"
+        },
+        "note": {
+          "type": "string"
+        },
+        "criteria_file": {
+          "const": "code_review.md",
+          "description": "U4=C: the single review criteria file (holds the agentive-review-rules block)"
+        },
+        "referenced_from": {
+          "const": "AGENTS.md",
+          "description": "U4=C: AGENTS.md points to code_review.md with one pointer line (no @import since REVIEWRULES, 2026-11-02) and holds the human review rules in its ## Code Review Rules section"
+        },
+        "managed_code_review_copy_default": {
+          "const": false,
+          "description": "U4=C: a REVIEW.md copy is generated only when a project sets review.managed_code_review_copy to true; the default is false"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "value": {
+                "const": null
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "decided_by": {
+                "const": null
+              }
+            },
+            "not": {
+              "anyOf": [
+                {
+                  "required": [
+                    "criteria_file"
+                  ]
+                },
+                {
+                  "required": [
+                    "referenced_from"
+                  ]
+                },
+                {
+                  "required": [
+                    "managed_code_review_copy_default"
+                  ]
+                }
+              ]
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "value": {
+                "enum": [
+                  "A",
+                  "B",
+                  "C"
+                ]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "decided_by": {
+                "const": "user"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "value": {
+                "const": "C"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "criteria_file",
+              "referenced_from",
+              "managed_code_review_copy_default"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "value": {
+                "enum": [
+                  "A",
+                  "B"
+                ]
+              }
+            }
+          },
+          "then": {
+            "not": {
+              "anyOf": [
+                {
+                  "required": [
+                    "criteria_file"
+                  ]
+                },
+                {
+                  "required": [
+                    "referenced_from"
+                  ]
+                },
+                {
+                  "required": [
+                    "managed_code_review_copy_default"
+                  ]
+                }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  }
+}

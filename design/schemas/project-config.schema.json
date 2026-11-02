@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://fw.local/schemas/project-config.schema.json",
+  "title": ".agents/framework.yaml (project config the user owns)",
+  "description": "Split from framework-config on 2026-10-27 (N-D8). The knobs without an implemented alternative are constants in the framework design and have no key here. A change to this file is in U2 confirm_scope (review_config). Since DEFAULTS (2026-10-29) this file holds overrides only; the framework defaults live in code and init does not write .agents/decisions.yaml.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "review": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "managed_code_review_copy": {
+          "type": "boolean",
+          "default": false,
+          "description": "U4=C opt-in (.agents/framework.yaml, project): true makes /agentive:init and /agentive:update generate REVIEW.md as a copy of code_review.md for teams that use Claude managed Code Review (Team/Enterprise research preview). Default false: only code_review.md exists. This is the only question /agentive:init asks: a plain yes/no, default No, skipped when --managed-review-copy or --no-managed-review-copy is given (since C-059 init asks no intent or stack questions). The answer is stored here; /agentive:update never asks and follows this key (absent counts as false). The copy is a whole generated file tracked in manifest.generated; code_review.md stays the only source. (C-058, user decision 2026-10-14; pattern: OpenSpec githubCopilot.cloudAgent)"
+        },
+        "pipeline": {
+          "$ref": "review-config.schema.json",
+          "description": "RV1-RV8 + RV7b switches that are left (review-config)"
+        },
+        "auto_merge": {
+          "enum": [
+            "off",
+            "dry_run",
+            "low_risk",
+            "low_and_medium_risk"
+          ],
+          "default": "low_risk",
+          "description": "DEFAULTS (user 2026-10-29, V1-18): whether the review gate merges pull requests automatically. The default lives in framework code, not in this file: a key that is absent means low_risk, the original U1=C behaviour (tier 0 on, tier 1 shadow). off: nothing is merged and nothing is labeled, a human merges every PR. dry_run: nothing is merged; a PR (tier 0 included) that would have been merged gets the label agentive:shadow-auto-merge. low_risk (default): tier 0 PRs (mechanically verified changes: docs, formatting and the classes the project adds) are merged automatically; tier 1 runs in shadow mode: a tier 1 PR that would qualify gets the label agentive:shadow-auto-merge and a human merges it. low_and_medium_risk: tier 0 and tier 1 PRs are merged automatically (tier 1 only with a rubric score at or below the threshold). Tier 2 PRs are always merged by a human. The kill switch (2 reverts or hotfixes within 7 days, per tier and source) and every gate condition apply to every value. A merge also needs the GitHub repository setting 'Allow auto-merge' and branch protection that requires agentive-review-gate. An unknown value counts as off. A change to this key is a review_config change: a human confirms it before commit, and a run with no human present opens a PR only. Show the value in force and why it is unavailable: .agents/bin/agentive-lint settings --effective"
+        }
+      }
+    }
+  }
+}

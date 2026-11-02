@@ -1,0 +1,16 @@
+# agentive-unit: rl.manifest
+# design: spec.repo_layer.files[f-manifest], contracts[manifest], spec.init_apply.empty_dir.pending, spec.stop_conditions, spec.context_management.context_gate
+# Seed of the agentive manifest. The engine never installs this file as is: it reads the defaults below
+# (stop_conditions, context, janitor) and writes .agents/manifest.yaml from the repo evidence (schema manifest).
+schema_version: 1
+framework: {plugin: agentive, version: 0.0.0}
+verbs:
+  lint: {status: pending, reason: no_evidence}
+  test: {status: pending, reason: no_evidence}
+  verify: {status: pending, reason: no_evidence}
+paths: {src: [], tests: [], generated: [], vendor: []}
+capabilities: {}
+tools: {}
+stop_conditions: {max_blocks: 8, no_progress_rounds: 2}
+context: {read_limit_bytes: 65536}
+janitor: {kinds: []}

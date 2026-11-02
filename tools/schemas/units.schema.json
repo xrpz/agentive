@@ -1,0 +1,170 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agentive.local/tools/units.schema.json",
+  "title": "src/units/<area>.yaml: generator unit list (framework-internal, not a design contract)",
+  "description": "One unit = one source file or directory under src/ and where the generator puts it. docs/IMPLEMENTATION.md §3 explains every field. Each area file is owned by one implementer (owner).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "owner",
+    "units"
+  ],
+  "properties": {
+    "owner": {
+      "enum": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "description": "the implementer that owns this area file and every unit in it"
+    },
+    "units": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/unit"
+      }
+    }
+  },
+  "$defs": {
+    "unit": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "kind",
+        "refs"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9.-]*[a-z0-9]$",
+          "description": "stable unit id; script and yaml sources name it in their header line `agentive-unit: <id>`"
+        },
+        "kind": {
+          "enum": [
+            "repo_layer",
+            "engine",
+            "plugin_claude",
+            "plugin_codex"
+          ],
+          "description": "repo_layer: template installed into user repos (bundled in every payload); engine: init/update/reprove apply engine (bundled in every payload); plugin_claude / plugin_codex: file of one plugin output"
+        },
+        "src": {
+          "type": "string",
+          "description": "source path relative to the repo root: a file, or a directory ending with '/'. Must sit under the kind's source root (repo_layer: src/repo-layer/, engine: src/engine/, plugin_claude: src/plugin/claude-code/, plugin_codex: src/plugin/codex/)"
+        },
+        "generator": {
+          "enum": [
+            "compat"
+          ],
+          "description": "repo_layer only, instead of src: content built from design/framework.yaml by tools/generate.py (compat: spec.compat -> .agents/compat.yaml)"
+        },
+        "install": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "minItems": 1,
+              "uniqueItems": true
+            }
+          ],
+          "description": "repo_layer only: path in the user repo (a directory ends with '/'). A list (file units only) installs one source at several paths, e.g. stage-check.sh into each chain-* skill. Default: src relative to src/repo-layer/ with every 'dot-' component prefix turned back into '.'"
+        },
+        "f": {
+          "type": "string",
+          "pattern": "^f-[a-z0-9-]+$",
+          "description": "repo_layer only: id in design spec.repo_layer.files"
+        },
+        "class": {
+          "enum": [
+            "whole",
+            "shared"
+          ],
+          "description": "repo_layer only (default whole): design init_apply.managed_regions.file_classes. shared: src is a directory '<escaped path>.regions/' holding one '<region>.<ext>' file per region"
+        },
+        "regions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "uniqueItems": true,
+          "description": "shared only: region ids as in design init_apply.managed_regions.regions without the path, e.g. [context, path-rules] for AGENTS.md"
+        },
+        "confirm_scope": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "hooks",
+              "permissions",
+              "ci",
+              "claude_settings",
+              "codex_dir",
+              "review_config"
+            ]
+          },
+          "description": "repo_layer only: U2 confirm_scope categories the installed file belongs to (init/update ask a human before writing it)"
+        },
+        "schema": {
+          "type": "string",
+          "pattern": "^[a-z0-9-]+$",
+          "description": "design/schemas/<schema>.schema.json the installed file must satisfy; the generator validates the source when it has no install-time placeholder"
+        },
+        "when": {
+          "type": "string",
+          "description": "repo_layer only: condition the engine evaluates at install time (for example review.managed_code_review_copy). Absent = always installed"
+        },
+        "header": {
+          "type": "boolean",
+          "default": true,
+          "description": "false: comment-capable files of this unit need no `agentive-unit:` header (for example fixtures or files whose bytes are compared)"
+        },
+        "refs": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string"
+          },
+          "description": "design/framework.yaml paths this unit implements: dotted keys, list items selected by id in brackets (spec.repo_layer.files[f-guard], decisions.accepted[CHAIN])"
+        },
+        "note": {
+          "type": "string"
+        }
+      },
+      "oneOf": [
+        {
+          "required": [
+            "src"
+          ],
+          "not": {
+            "required": [
+              "generator"
+            ]
+          }
+        },
+        {
+          "required": [
+            "generator"
+          ],
+          "not": {
+            "required": [
+              "src"
+            ]
+          },
+          "properties": {
+            "kind": {
+              "const": "repo_layer"
+            }
+          }
+        }
+      ]
+    }
+  }
+}

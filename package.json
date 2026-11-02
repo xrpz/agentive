@@ -1,0 +1,21 @@
+{
+  "name": "agentive",
+  "version": "0.1.0",
+  "private": true,
+  "description": "agentive framework repo: design/framework.yaml + generator -> Claude Code and Codex plugins",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/xrpz/agentive"
+  },
+  "scripts": {
+    "generate": "python3 tools/generate.py",
+    "check": "python3 tools/generate.py --check",
+    "test": "python3 tools/selftest.py",
+    "changeset": "changeset",
+    "version": "changeset version && python3 tools/generate.py"
+  },
+  "devDependencies": {
+    "@changesets/cli": "2.29.7"
+  }
+}

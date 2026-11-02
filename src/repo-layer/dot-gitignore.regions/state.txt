@@ -1,0 +1,3 @@
+.agents/state/
+.claude/worktrees/
+%%agentive:render.gitignore_stack%%

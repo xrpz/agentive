@@ -1,0 +1,23 @@
+# agentive-unit: config.framework-repo
+# design: contracts[framework-repo-config] (schema design/schemas/framework-repo-config.schema.json)
+# Framework repo config: the plugin name (decision D14) and the framework-level user decisions U3, U4.
+# This is NOT the design. The canonical design is design/framework.yaml (spec, decisions, view).
+# plugin.name must equal design spec.plugin.name (tools/generate.py fails otherwise).
+plugin:
+  name: agentive
+  marketplace_name: agentive   # [설계 판단] install ids are agentive@agentive (Claude Code and Codex)
+decisions:
+  U3:
+    value: B
+    decided_by: user
+    decided_at: "2026-10-14T00:00:00+09:00"
+    confirm_scope: [hooks, permissions, sandbox, security, release]
+    self_tests: [generate_check, schema_validation, sample_repo_tests]
+    note: "the author is asked before a commit that touches u3_confirm_paths (AGENTS.md lists them) or is a release"
+  U4:
+    value: C
+    decided_by: user
+    decided_at: "2026-10-14T00:00:00+09:00"
+    criteria_file: code_review.md
+    referenced_from: AGENTS.md
+    managed_code_review_copy_default: false

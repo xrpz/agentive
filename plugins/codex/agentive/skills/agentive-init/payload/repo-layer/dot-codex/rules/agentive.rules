@@ -1,0 +1,7 @@
+# agentive-unit: rl.codex.rules
+# design: spec.repo_layer.files[f-codex-rules], spec.guard.codex, UV-31
+# Experimental, best effort (Codex execpolicy prefix_rule). Rendered from .agents/guard.yaml: argv_prefix rules
+# without `*` or unless. Patterns match an exact argv prefix, so another argument order is not caught; the
+# Codex guard hook (.codex/hooks.json) and the sandbox stay the boundary. deny -> forbidden, ask -> prompt.
+# Check: .codex/rules/agentive-execpolicy-check.txt
+%%agentive:render.codex_rules%%

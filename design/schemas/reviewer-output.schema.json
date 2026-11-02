@@ -1,0 +1,156 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "reviewer-output.schema.json",
+  "title": "RV5 reviewer output (FINDINGID, 2026-10-29)",
+  "description": "What a reviewer replies with: new findings and the status of the open findings of earlier rounds. The reviewer never computes an id or a hash: the script mints the finding id from path, bug_class and the anchor line it reads itself (design spec.review_pipeline.convergence.finding_identity). bug_class is a closed enum; free text goes to pattern. Usable as the schema of claude -p --json-schema and codex exec --output-schema; findings.clean_reviewer_output validates again.",
+  "type": "object",
+  "required": [
+    "findings"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "findings": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/finding"
+      }
+    },
+    "open_findings": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/open_finding"
+      }
+    }
+  },
+  "$defs": {
+    "bug_class": {
+      "enum": [
+        "logic",
+        "error-handling",
+        "concurrency",
+        "data-contract",
+        "security",
+        "test-gap",
+        "spec-drift",
+        "other"
+      ]
+    },
+    "finding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "file",
+        "line",
+        "trigger",
+        "summary",
+        "severity",
+        "bug_class"
+      ],
+      "properties": {
+        "file": {
+          "type": "string",
+          "minLength": 1,
+          "description": "repo-relative path in the head tree"
+        },
+        "line": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "the anchor line in the head tree"
+        },
+        "trigger": {
+          "type": "string",
+          "minLength": 1,
+          "description": "the input or state that makes the bug happen"
+        },
+        "summary": {
+          "type": "string"
+        },
+        "severity": {
+          "enum": [
+            "important",
+            "nit",
+            "pre_existing"
+          ]
+        },
+        "bug_class": {
+          "$ref": "#/$defs/bug_class"
+        },
+        "pattern": {
+          "type": "string",
+          "maxLength": 200,
+          "description": "free-text name of the bug pattern, display only"
+        },
+        "evidence": {
+          "type": "string"
+        },
+        "instances": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "file",
+              "line"
+            ],
+            "properties": {
+              "file": {
+                "type": "string"
+              },
+              "line": {
+                "type": "integer",
+                "minimum": 1
+              }
+            }
+          }
+        },
+        "same_as": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^F-[0-9a-f]{10}$",
+          "description": "the id of an open finding from the task file; the script verifies that the path is the same file"
+        }
+      }
+    },
+    "open_finding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "status"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^F-[0-9a-f]{10}$"
+        },
+        "status": {
+          "enum": [
+            "still_present",
+            "fixed"
+          ]
+        },
+        "evidence": {
+          "type": "string",
+          "description": "required when status is fixed; a fixed without evidence is ignored"
+        }
+      },
+      "if": {
+        "properties": {
+          "status": {
+            "const": "fixed"
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "then": {
+        "required": [
+          "evidence"
+        ]
+      }
+    }
+  }
+}

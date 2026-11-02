@@ -1,0 +1,20 @@
+{
+  "name": "agentive",
+  "interface": {
+    "displayName": "agentive"
+  },
+  "plugins": [
+    {
+      "name": "agentive",
+      "source": {
+        "source": "local",
+        "path": "./plugins/codex/agentive"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Developer Tools"
+    }
+  ]
+}

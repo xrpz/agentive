@@ -1,0 +1,169 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://fw.local/schemas/rubric.schema.json",
+  "title": ".agents/rubric.yaml (preset, generated) and .agents/custom/.agents/rubric.yaml (project override): the RV7b binary rubric (U6)",
+  "description": "U6 decided 2026-10-15 (agentive:rubric@1 = spread 24, size 24, incident_history 24, change_type 14, recent_churn 14), revised 2026-10-30 (E2E-13): preset agentive:rubric@2 = spread 24 (>=2 production modules or a shared path among production files; tests and docs excluded), size 30 (>500 changed lines; tests counted; lock, generated and vendor files excluded), incident_history 30, change_type 14 (dependency only), recent_churn 14 (>=5 changes landed on the base branch within 90 days on a changed production file: first-parent history, a merged PR, a squash commit or a direct commit counts 1; revised 2026-10-31); binary scoring, score > 28 -> human. The override extends a framework preset, holds only what changes, is merged by item id, and switches an item off with enabled: false; extends naming a preset other than the one in .agents/rubric.yaml pins that preset (agentive:rubric@1 stays pinnable, extends alone is then valid). /agentive:update moves the preset and an override that extended the old preset together and reports it. No personal layer. A rubric change is tier 2 and a U2 confirmation target. An override that fails validation sends tier 1 to a human (tier 0 still auto-merges). `.agents/bin/agentive-lint rubric --effective` prints the effective rubric and its sha256.",
+  "oneOf": [
+    {
+      "title": "preset",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "preset",
+        "scoring",
+        "human_if_score_gt",
+        "items"
+      ],
+      "properties": {
+        "preset": {
+          "type": "string",
+          "pattern": "^agentive:rubric@[0-9]+$"
+        },
+        "scoring": {
+          "const": "binary"
+        },
+        "human_if_score_gt": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "shared_globs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "**/shared/**",
+            "**/common/**"
+          ],
+          "description": "design judgment: paths that count as shared for the spread item"
+        },
+        "items": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "allOf": [
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "id"
+                ],
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "pattern": "^[a-z][a-z0-9_]*$"
+                  },
+                  "hit": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "the condition RV7b checks (deterministic RV1/RV3 inputs only)"
+                  },
+                  "input": {
+                    "enum": [
+                      "modules_touched_or_shared_path",
+                      "production_modules_or_shared_path",
+                      "changed_lines",
+                      "incident_history_90d",
+                      "change_class",
+                      "recent_churn_30d",
+                      "production_churn_90d"
+                    ],
+                    "description": "rubric@1 inputs: modules_touched_or_shared_path, recent_churn_30d (every changed file); rubric@2 (E2E-13): production_modules_or_shared_path, production_churn_90d (production files only: not tests, docs, lock, generated or vendor files)"
+                  },
+                  "weight": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 100
+                  },
+                  "enabled": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "an override switches an item off with enabled: false"
+                  }
+                }
+              },
+              {
+                "required": [
+                  "id",
+                  "hit",
+                  "input",
+                  "weight"
+                ]
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "override",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "extends"
+      ],
+      "properties": {
+        "extends": {
+          "type": "string",
+          "pattern": "^agentive:rubric@[0-9]+$"
+        },
+        "human_if_score_gt": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "shared_globs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9_]*$"
+              },
+              "hit": {
+                "type": "string",
+                "minLength": 1,
+                "description": "the condition RV7b checks (deterministic RV1/RV3 inputs only)"
+              },
+              "input": {
+                "enum": [
+                  "modules_touched_or_shared_path",
+                  "production_modules_or_shared_path",
+                  "changed_lines",
+                  "incident_history_90d",
+                  "change_class",
+                  "recent_churn_30d",
+                  "production_churn_90d"
+                ]
+              },
+              "weight": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 100
+              },
+              "enabled": {
+                "type": "boolean",
+                "default": true,
+                "description": "an override switches an item off with enabled: false"
+              }
+            }
+          }
+        }
+      },
+      "minProperties": 1,
+      "description": "extends alone pins that framework preset (E2E-13: agentive:rubric@1 stays pinnable); an override that extends the preset named in .agents/rubric.yaml needs at least one change (checked at run time by agentive.review.config.effective_rubric)"
+    }
+  ]
+}

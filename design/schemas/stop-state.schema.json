@@ -1,0 +1,84 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://fw.local/schemas/stop-state.schema.json",
+  "title": ".agents/state/stop.json (Stop hook counter; gitignored)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "session_id",
+    "consecutive_blocks",
+    "last_fail_count"
+  ],
+  "properties": {
+    "session_id": {
+      "type": "string"
+    },
+    "consecutive_blocks": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "last_fail_count": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "total_blocks": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "last_reason": {
+      "enum": [
+        "DONE",
+        "PENDING",
+        "NO-PROGRESS",
+        "CAP",
+        "BLOCK",
+        "RED-UNCHANGED",
+        null
+      ],
+      "description": "RED-UNCHANGED: the working-tree fingerprint equals the last verify's, that verify failed and consecutive_blocks was 0 (Q&A turn or a tree already red before the turn): no rerun, no block (spec.stop_hook.algorithm)"
+    },
+    "handoff_requested": {
+      "type": "boolean",
+      "default": false,
+      "description": "set on NO-PROGRESS when the one continuation is requested; the next Stop clears it and exits 0 without re-running verify (D7 #6)"
+    },
+    "started_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "when this session's counter started (a new start: SessionStart startup or resume, or the first Stop hook of a new session id); the Stop hook of a run with no human adds the HANDOFF line only for a handoff whose created_at is not before it (decisions.accepted[HANDOFFREPORT])"
+    },
+    "open_question_nudged": {
+      "type": "boolean",
+      "default": false,
+      "description": "set when the Stop hook asked once, with no human present, for the open_question handoff of a spec/<slug> branch whose spec.md has an [OPEN] bullet (decisions.accepted[OPENMARK]); a new start resets it"
+    },
+    "failure_window": {
+      "type": "array",
+      "items": {
+        "type": "integer",
+        "minimum": 0
+      },
+      "maxItems": 10,
+      "description": "total_failures of the recent runs; emptied on reset (verify green, decrease, new start, right after NO-PROGRESS)"
+    },
+    "last_reset": {
+      "enum": [
+        "verify_green",
+        "decreased",
+        "new_start",
+        "after_no_progress",
+        null
+      ]
+    },
+    "last_fail_lines": {
+      "type": "array",
+      "maxItems": 4,
+      "items": {
+        "type": "string"
+      },
+      "description": "the last AGENTIVE_FAIL lines of the last full verify run; the cached NO-PROGRESS / CAP path (unchanged tree, consecutive_blocks > 0) prints them again instead of rerunning verify"
+    }
+  }
+}

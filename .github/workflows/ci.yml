@@ -1,0 +1,54 @@
+# agentive-unit: config.ci
+# design: spec.framework_repo.self_tests.ci (on pull_request and push to the default branch; never on a schedule)
+name: ci
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  selftest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"      # E2E-41: the selftests run the engine, which stops below the python floor (3.13)
+      - run: python3 -m pip install -r requirements-dev.txt
+      - name: generate_check
+        run: python3 tools/selftest.py generate_check
+      - name: schema_validation
+        run: python3 tools/selftest.py schema_validation
+      - name: size_budget
+        run: python3 tools/selftest.py size_budget
+      - name: component_tests
+        run: python3 tools/selftest.py component_tests
+      - name: sample_repo_tests
+        run: python3 tools/selftest.py sample_repo_tests
+      - name: version_sync_check
+        run: python3 tools/selftest.py version_sync_check
+  runtime-python-floor:
+    # [설계 판단] the run-time library promises python3 >= 3.13 stdlib only (user decision 2026-11-01, decisions.accepted[PYFLOOR];
+    # docs/IMPLEMENTATION.md §4). 3.13 is offered by setup-python on ubuntu-latest (Ubuntu 26.04 lists 3.10 to 3.15).
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - run: python3 -m pip install -r requirements-dev.txt
+      - run: python3 -m unittest discover -s tests/lib -p 'test_*.py'
+      - run: python3 -m unittest discover -s tests/review -p 'test_*.py'   # D's run-time review scripts
+  runtime-python-latest:
+    # [설계 판단] the same run-time check on the newest Python that ubuntu-latest (Ubuntu 26.04) offers, so the repo tests
+    # both the lowest promised (3.13, job above) and the newest Python. Raise it when setup-python lists a newer release.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.15"
+      - run: python3 -m pip install -r requirements-dev.txt
+      - run: python3 -m unittest discover -s tests/lib -p 'test_*.py'
+      - run: python3 -m unittest discover -s tests/review -p 'test_*.py'
