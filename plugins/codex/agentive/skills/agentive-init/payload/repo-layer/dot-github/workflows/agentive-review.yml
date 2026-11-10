@@ -32,6 +32,9 @@
 # Claude (llm-state) and no CI review exists, agentive-independence does not require the CI review and the gate ends
 # human_required with ::notice:: and step-summary lines: a human reviews and merges; merge the install PR first. A fork PR
 # is named first (no secrets, no OIDC token). No pull_request_target workaround (it would run PR code with secrets).
+# WFSKIP (2026-11-10): the action also skipped PRs whose workflow file was identical to the default branch's copy (the token
+# server's rule is closed and undocumented). When llm-state says claude, not started, outcome success and no CI review exists,
+# the gate treats the run as an exempt skip (kind action_skipped) whichever files the PR changed: human_required, never auto-merge.
 # Label events (LABELTRIGGER): `labeled` is a trigger so a label a human adds (agentive:full-review) or the janitor adds
 # (agentive-janitor:*) takes effect without a push. Allowlist L = the action is `labeled` and the label name is exactly
 # agentive:full-review or starts with agentive-janitor: (an unrelated label, or the gate's own agentive:shadow-auto-merge,

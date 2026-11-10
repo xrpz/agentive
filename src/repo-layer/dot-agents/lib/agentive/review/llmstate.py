@@ -23,6 +23,14 @@ comparison of that file: the commit the run used (GITHUB_SHA, the PR merge commi
 origin/<default branch>, plus the base commit to tell a workflow change from a base that differs from the default branch.
 Hybrid: when the recorded action state says Claude ran (conclusion success | failure) or the CI produced a review, no skip
 reason is given even when the blobs differ. A fork PR is named first (no secrets and no OIDC token). Claude path only.
+
+WFSKIP (decisions.accepted[WFCHANGE].revised_wfskip, user decision 2026-11-10): the action also skipped PRs whose workflow file was
+identical to the default branch's copy (xrpz/talent-ms PR #11 and PR #13: the Anthropic token server refused the workflow
+validation; its rule is closed and undocumented, unverified). agentive always passes a prompt, so the only way the action ends
+with step outcome success and without starting Claude is such a skip. When the blob rules name no cause, the recorded state is
+claude, not started, outcome success, and no CI review exists, workflow_skip() returns the exempt kind action_skipped (human
+review, never auto-merge). The action's undeclared step output skipped_due_to_workflow_validation_mismatch is not read. A state or
+outcome that cannot be read gives None (fail-safe).
 """
 import json
 import os
@@ -196,7 +204,10 @@ FORK = ("fork PR: GitHub gives a workflow run from a fork no repository secrets 
 WORKFLOW_CHANGE = ("workflow-change PR: AI review skipped by the action; human review. The Claude Code action runs only when the "
                    f"workflow file of the run is identical to the default branch's copy (its workflow validation), and this PR "
                    f"{{what}} {WORKFLOW}; a human reviews and merges it, and later PRs get the AI review once it is merged")
+ACTION_SKIPPED = ("AI review skipped by claude-code-action (workflow validation refused by the token server; the exact rule is not "
+                  "public); human review")
 NEXT = {
+    "action_skipped": ACTION_SKIPPED,
     "fork": "a human reviews and merges the fork PR (no AI review can run on it)",
     "workflow_change": "workflow-change PR: AI review skipped by the action; human review (merge it, then later PRs get the AI review)",
     "base_differs": "bring the default branch workflow into the base: merge {default}'s " + WORKFLOW + " into {base}; until then PRs into "
@@ -229,12 +240,24 @@ def default_ref(repo, default_branch):
 def workflow_skip(repo, tool, state, have_ci_review, default_branch, base_ref, base_sha, run_rev, head_repo=None, repository=None):
     """{kind, exempt, detail, next} when the AI review of this run did not happen because of the action's workflow validation
     (kinds workflow_change, base_differs, stale_merge; exempt True: agentive-independence does not require the CI review and
-    the gate ends human_required) or because the PR comes from a fork (kind fork, exempt False). None otherwise, and None
+    the gate ends human_required), because the action ended without starting Claude while the blobs name no cause (kind
+    action_skipped, exempt True, WFSKIP) or because the PR comes from a fork (kind fork, exempt False). None otherwise, and None
     whenever a fact cannot be read (fail-safe: the earlier behaviour applies)."""
     if tool != "claude" or have_ci_review or (state or {}).get("started") is True:
         return None
     if head_repo and repository and head_repo != repository:
         return {"kind": "fork", "exempt": False, "detail": FORK, "next": NEXT["fork"]}
+    named = _blob_skip(repo, default_branch, base_ref, base_sha, run_rev)
+    if named is not None:
+        return named
+    st = state or {}
+    if st.get("started") is False and st.get("outcome") == "success":      # WFSKIP: the action returned early without Claude
+        return {"kind": "action_skipped", "exempt": True, "detail": ACTION_SKIPPED, "next": NEXT["action_skipped"]}
+    return None
+
+
+def _blob_skip(repo, default_branch, base_ref, base_sha, run_rev):
+    """The workflow_change | base_differs | stale_merge result from the blob comparison, or None."""
     if not default_branch:
         return None
     run_blob = blob(repo, run_rev or "HEAD")

@@ -1099,7 +1099,7 @@ cond("E2E-10b: the allowlist codes, the gate NEXT form, no error text anywhere",
      and 'NEXT=ai_step_failed:<code>' in lf_['surfaces'] and 'never copied' in lf_['surfaces'] and 'show_full_output stays false' in lf_['surfaces'])
 wc_ = fl['workflow_change']
 cond("E2E-11: detection compares the merge commit (never the head) with origin/<default>; four kinds; exemption only for a skip",
-     'GITHUB_SHA' in wc_['detection'] and 'never the PR head' in wc_['detection'] and set(wc_['kinds']) == {'fork', 'workflow_change', 'base_differs', 'stale_merge'}
+     'GITHUB_SHA' in wc_['detection'] and 'never the PR head' in wc_['detection'] and set(wc_['kinds']) == {'fork', 'workflow_change', 'base_differs', 'stale_merge', 'action_skipped'}
      and 'never a re-run' in wc_['kinds']['stale_merge'] and 'human_required' in wc_['effect'] and 'workflow_change' in sp['work_loop']['ci_independence_check'])
 cond("E2E-11: gate_reason enum lists ai_review_skipped and ai_step_failed", all(r_ in GR for r_ in ('ai_review_skipped', 'ai_step_failed')))
 u6_ = [d for d in Y['decisions']['decided'] if d['id'] == 'U6'][0]

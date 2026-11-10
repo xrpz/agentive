@@ -598,6 +598,36 @@ class E2EBatchATest(PipelineBase):
         from agentive.review import llmstate
         self.assertIsNone(llmstate.workflow_skip(self.repo.dir, "claude", None, False, "trunk", "main", add, old_head))   # no origin/trunk
 
+    def test_wfskip_not_started_success_is_an_exempt_skip_whichever_files_changed(self):
+        """WFSKIP (talent-ms PR #13): the workflow file is identical on the default branch, base and head, yet the action skipped."""
+        g = lambda *a: h.git(self.repo.dir, *a)      # noqa: E731
+        self.repo.write({self.WF: "name: agentive-review\n"})
+        wf = self.repo.commit("workflow on main")
+        g("update-ref", "refs/remotes/origin/main", wf)
+        self.repo.write({"docs/note.md": "a docs-only PR\n"})
+        head = self.repo.commit("docs only")
+        ns = {"tool": "claude", "outcome": "success", "started": False, "failed": False}
+        k = self.skip(head, base_sha=wf, state=ns)
+        self.assertEqual((k["kind"], k["exempt"]), ("action_skipped", True))
+        self.assertIn("workflow validation refused by the token server", k["detail"])
+        self.assertIn("human review", k["next"])
+        # the blob rules keep their precise kind when the workflow file did change
+        self.repo.write({self.WF: "name: agentive-review\n# changed\n"})
+        change = self.repo.commit("change workflow")
+        self.assertEqual(self.skip(change, base_sha=wf, state=ns)["kind"], "workflow_change")
+        # fork first
+        self.assertEqual(self.skip(head, base_sha=wf, state=ns, head_repo="x/fork", repository="o/r")["kind"], "fork")
+        # Claude started: no skip; step failure: no skip (the AISTEPFAIL path); a CI review exists: no skip; codex: none
+        self.assertIsNone(self.skip(head, base_sha=wf, state=dict(ns, started=True)))
+        self.assertIsNone(self.skip(head, base_sha=wf, state=dict(ns, outcome="failure", failed=True)))
+        self.assertIsNone(self.skip(head, base_sha=wf, state=ns, have=True))
+        self.assertIsNone(self.skip(head, base_sha=wf, state=ns, tool="codex"))
+        # unreadable state or outcome: None (fail-safe)
+        self.assertIsNone(self.skip(head, base_sha=wf, state=None))
+        self.assertIsNone(self.skip(head, base_sha=wf, state=dict(ns, started=None)))
+        self.assertIsNone(self.skip(head, base_sha=wf, state={"tool": "claude", "started": False}))
+        self.assertIsNone(self.skip(head, base_sha=wf, state=dict(ns, outcome="unknown")))
+
     def gate_env(self):
         return {"AGENTIVE_DEFAULT_BRANCH": "main", "GITHUB_REPOSITORY": "o/r", "AGENTIVE_HEAD_REPO": "o/r"}
 
@@ -633,8 +663,9 @@ class E2EBatchATest(PipelineBase):
         self.assertNotIn("failing_required_check", rep["rv8"]["reason_codes"])
         self.assertIn("::notice title=agentive AI review skipped::", gout)
         self.assertIn("NEXT=workflow-change PR: AI review skipped by the action; human review", gout.splitlines()[-1])
-        # without the skip (the workflow equals the default branch's copy) the missing CI review still blocks
+        # without a skip (the workflow equals the default branch's copy and the state is unreadable) the missing CI review still blocks
         h.git(self.repo.dir, "update-ref", "refs/remotes/origin/main", head)
+        os.remove(os.path.join(work, "llm-state.json"))
         rc, gout = self.repo.run(REVIEW, "gate", "7", "--pr-json", self.pr(head, body(explainer=True)), "--work", work, "--checks", checks,
                                  "--comments-json", self.comments([]), env=env)
         rep = json.loads(h.read(os.path.join(work, "review-report.json")))

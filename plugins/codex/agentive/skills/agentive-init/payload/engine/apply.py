@@ -1648,7 +1648,9 @@ class Engine:
             self.out("AGENTIVE_REPORT github: install PR: the first install PR and every PR that changes .github/workflows/agentive-review.yml "
                      "run without the CI AI review: the Claude Code action runs only when that workflow file is identical to the default "
                      "branch's copy (its workflow validation) and skips otherwise; a human reviews and merges such a PR (the gate ends "
-                     "human_required and says why); merge the install PR first, before other PRs, so later PRs get the AI review")
+                     "human_required and says why); the action can also skip a PR whose workflow file is unchanged (its token server refuses the "
+                     "workflow validation, the rule is not public): the gate then ends human_required the same way; merge the install PR "
+                     "first, before other PRs, so later PRs get the AI review")
         self.out("AGENTIVE_REPORT github: a Dependabot or fork PR runs without Actions secrets, so the ai-review LLM stage cannot run and the gate sends it to a human "
                  "(human_required, fail-safe); a bot PR, or a human PR without an agentive-review block, skips the PR-body heading check and is never auto-merged "
                  "(.github/pull_request_template.md is installed for human PRs)")

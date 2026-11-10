@@ -295,6 +295,8 @@ def why_items(report, extras=None, reasons=None):
                                     "branch's copy, so the AI review was skipped."),
                 "base_differs": "The base branch has a different review workflow from the default branch, so the AI review was skipped.",
                 "stale_merge": "This run used an older review workflow than the default branch has now, so the AI review was skipped.",
+                "action_skipped": "The Claude Code action skipped the AI review (its workflow validation was refused by the token server; "
+                                  "the exact rule is not public).",
                 }.get(k, "The AI review was skipped.")
         add("G5", text, ["ai_review_skipped"])
     fail = _ai_failure(extras)

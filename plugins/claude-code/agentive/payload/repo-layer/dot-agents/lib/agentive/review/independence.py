@@ -14,7 +14,8 @@ Exempt (result `exempt`, never auto-merged: tier 1+ and human_required with the 
   - human PR without an agentive-review block: not an agent PR -> human_pr_exempt [design judgment: agent-only heading check]
 Workflow-validation skip (E2E-11, decisions.accepted[WFCHANGE]): when review/llmstate.workflow_skip finds that the Claude Code
 action skipped this run because the run's .github/workflows/agentive-review.yml differs from the default branch's copy (the
-first install PR, a workflow-change PR, a base that differs from the default branch, an old merge commit), rule 1 is not
+first install PR, a workflow-change PR, a base that differs from the default branch, an old merge commit, or, with identical
+files, a run whose recorded state says the action ended without starting Claude: WFSKIP action_skipped), rule 1 is not
 required: the missing CI review becomes a note (`ci_review_skipped:<kind>`), every other rule still applies, and the gate
 ends human_required for that reason (never auto-merged). Only then: a missing CI review for any other reason still fails.
 The tier-2 ## Explainer is RV8's check, not this one.
