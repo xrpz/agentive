@@ -1,6 +1,6 @@
 {
   "name": "agentive",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "AI-native SDLC and codebase framework for Claude Code and Codex. /agentive:init configures a repo from its own evidence.",
   "author": {
     "name": "xrpz"

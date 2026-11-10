@@ -1,7 +1,7 @@
 {
   "generated_by": "tools/generate.py",
   "plugin": "agentive",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "escape_rule": "template paths keep src/ escaping: a component 'dot-x' is '.x' in the user repo; install is the real path",
   "entries": [
     {
