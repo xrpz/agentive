@@ -13,6 +13,9 @@
     "agents"
   ],
   "icon": "./assets/icon.png",
+  "engines": {
+    "claude-code": ">=2.1.296"
+  },
   "homepage": "https://github.com/xrpz/agentive",
   "repository": "https://github.com/xrpz/agentive"
 }

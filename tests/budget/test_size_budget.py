@@ -30,6 +30,17 @@ MAX_LINES = 200
 MAX_BYTES = 32 * 1024
 MAX_SKILL_TEXT = 1536
 MAX_SKILL_LIST = 8000
+# Codex skill limits, from the openai/codex source (codex-rs/skills/src/parser.rs MAX_NAME_LEN = 64; interface.rs MAX_NAME_LEN = 64
+# for interface.display_name and MAX_DESCRIPTION_LEN = 1024 for interface.short_description and interface.default_prompt).
+CODEX_NAME_LEN = 64
+CODEX_INTERFACE_TEXT_LEN = 1024
+# [설계 판단, impl26 B4] No official Codex limit for a SKILL.md body was found. The ratchet of EveryInc/compound-engineering (AGENTS.md:111,
+# tests/codex-skill-prompt-budget.test.ts: "Codex's 8,000-byte skill prompt budget", an OVER_BUDGET exemption set) is used: a SKILL.md
+# stays within 8,000 bytes, and a skill already over keeps its measured size as a ceiling that may only go down. Peer case:
+# fcakyon/claude-codex-settings b361f98 keeps skill bodies over Antigravity's 24,000-byte loading limit in a separate file
+# (another tool's limit, the same method: a loader limit turned into a check). 미검증: that Codex truncates a body at 8,000 bytes.
+SKILL_BODY_BUDGET = 8000
+OVER_BUDGET = {"distill": 12990, "pr": 8330}    # skill dir name -> ceiling in bytes of the installed SKILL.md; remove an entry once under budget
 IMPORT = re.compile(r"(?<![\w`])@((?:\.{0,2}/)?[\w][\w./-]*\.\w+)")
 FENCE = re.compile(r"^\s*(```|~~~)")
 CODE_SPAN = re.compile(r"`[^`\n]*`")
@@ -102,6 +113,13 @@ def skill_text(path):
     return str(fm.get("description") or ""), str(fm.get("when_to_use") or "")
 
 
+def ratchet(sizes, over_budget, budget=None):
+    """-> ({skill: (size, allowed)} for skills above their allowance, [exempted skills now within budget])."""
+    budget = SKILL_BODY_BUDGET if budget is None else budget
+    grown = {n: (b, over_budget.get(n, budget)) for n, b in sizes.items() if b > over_budget.get(n, budget)}
+    return grown, [n for n in over_budget if sizes.get(n, 0) <= budget]
+
+
 def skill_files(*parts):
     base = os.path.join(ROOT, *parts)
     return sorted(os.path.join(base, d, "SKILL.md") for d in os.listdir(base) if os.path.isfile(os.path.join(base, d, "SKILL.md")))
@@ -109,15 +127,19 @@ def skill_files(*parts):
 
 @unittest.skipUnless(os.path.isfile(ENGINE), "run python3 tools/generate.py first: the payload engine is missing")
 class InstalledAgentsMd(unittest.TestCase):
-    def test_expanded_agents_md_fits_the_limits_on_every_sample_repo(self):
-        worst = (0, 0)
-        dirs = {}
+    @classmethod
+    def setUpClass(cls):
+        cls.dirs = {}
         for stack in STACKS:
-            dirs[stack] = tempfile.mkdtemp(prefix=f"agentive-size-{stack}-")
-            self.addCleanup(shutil.rmtree, dirs[stack], True)
+            cls.dirs[stack] = tempfile.mkdtemp(prefix=f"agentive-size-{stack}-")
+            cls.addClassCleanup(shutil.rmtree, cls.dirs[stack], True)
         # the four installs are independent processes in their own directories: run them side by side [설계 판단]
         with concurrent.futures.ThreadPoolExecutor(max_workers=min(len(STACKS), os.cpu_count() or 1)) as pool:
-            list(pool.map(lambda stack: install_fixture(stack, dirs[stack]), STACKS))   # an AssertionError from an install is re-raised here
+            list(pool.map(lambda stack: install_fixture(stack, cls.dirs[stack]), STACKS))   # an AssertionError from an install is re-raised here
+
+    def test_expanded_agents_md_fits_the_limits_on_every_sample_repo(self):
+        worst = (0, 0)
+        dirs = self.dirs
         for stack in STACKS:
             d = dirs[stack]
             text = expand_imports(os.path.join(d, "AGENTS.md"))
@@ -142,6 +164,35 @@ class InstalledAgentsMd(unittest.TestCase):
         self.assertEqual(text.count("line 59"), 1)
         self.assertEqual(len(text.split("\n")), 6 + 60)
 
+    def test_installed_skill_bodies_fit_the_codex_byte_budget_as_a_ratchet(self):
+        """Installed repo skills (.agents/skills/*/SKILL.md after the engine rendered them) on every sample repo, and the generated Codex
+        plugin skills. Under 8,000 bytes, or listed in OVER_BUDGET and not above the listed ceiling; a listed skill that is now under
+        budget must be removed from the list so the ceiling cannot be reused."""
+        sizes = {}
+        for stack in STACKS:
+            base = os.path.join(self.dirs[stack], ".agents", "skills")
+            for name in sorted(os.listdir(base)):
+                p = os.path.join(base, name, "SKILL.md")
+                if os.path.isfile(p):
+                    sizes[name] = max(sizes.get(name, 0), os.path.getsize(p))
+        plug = os.path.join(ROOT, "plugins", "codex", "agentive", "skills")
+        for name in sorted(os.listdir(plug)):
+            p = os.path.join(plug, name, "SKILL.md")
+            if os.path.isfile(p):
+                sizes["plugin:" + name] = os.path.getsize(p)
+        over = {n: b for n, b in sizes.items() if b > SKILL_BODY_BUDGET}
+        say(f"SKILL.md bytes: largest {max(sizes.values())} in {len(sizes)} skills (budget {SKILL_BODY_BUDGET}; over budget, with ceiling: "
+            + ", ".join(f"{n} {b}/{OVER_BUDGET.get(n)}" for n, b in sorted(over.items())) + ")")
+        self.assertGreaterEqual(len(sizes), 11, "the measurement found the installed skills")
+        grown, stale = ratchet(sizes, OVER_BUDGET)
+        self.assertEqual(grown, {}, f"SKILL.md over {SKILL_BODY_BUDGET} bytes (size, allowed): shorten it; an over-budget skill may not grow")
+        self.assertEqual(stale, [], "these skills are within budget now: remove them from OVER_BUDGET")
+
+    def test_the_ratchet_flags_growth_and_stale_exemptions(self):
+        self.assertEqual(ratchet({"a": 7999, "b": 9000, "c": 8001}, {"b": 9000}), ({"c": (8001, 8000)}, []))
+        self.assertEqual(ratchet({"b": 9001}, {"b": 9000}), ({"b": (9001, 9000)}, []))
+        self.assertEqual(ratchet({"b": 7000}, {"b": 9000}), ({}, ["b"]))
+
 
 class SkillDescriptions(unittest.TestCase):
     def test_each_skill_text_fits_the_claude_listing_cut(self):
@@ -161,6 +212,24 @@ class SkillDescriptions(unittest.TestCase):
                 f"(repo skills {sum(repo)}, plugin skills {sum(plug)}; limit {MAX_SKILL_LIST})")
             self.assertLessEqual(total, MAX_SKILL_LIST, f"{tool}: the skill descriptions together exceed {MAX_SKILL_LIST} characters")
         self.assertGreaterEqual(len(repo), 9)
+
+
+class CodexSkillLimits(unittest.TestCase):
+    def test_codex_names_and_interface_texts_fit_the_codex_source_limits(self):
+        checked = 0
+        for path in skill_files("src", "plugin", "codex", "skills") + skill_files("src", "repo-layer", "dot-agents", "skills"):
+            name = str(frontmatter(path).get("name") or os.path.basename(os.path.dirname(path)))
+            self.assertLessEqual(len(name), CODEX_NAME_LEN, f"{path}: skill name is over {CODEX_NAME_LEN} characters")
+            iface = os.path.join(os.path.dirname(path), "agents", "openai.yaml")
+            if os.path.isfile(iface):
+                with open(iface, encoding="utf-8") as f:
+                    data = yaml.safe_load(f) or {}
+                i = data.get("interface") or {}
+                self.assertLessEqual(len(str(i.get("display_name") or "")), CODEX_NAME_LEN, f"{iface}: display_name")
+                for key in ("short_description", "default_prompt"):
+                    self.assertLessEqual(len(str(i.get(key) or "")), CODEX_INTERFACE_TEXT_LEN, f"{iface}: interface.{key}")
+                checked += 1
+        self.assertGreaterEqual(checked, 2)
 
 
 class FrameworkAgentsMd(unittest.TestCase):

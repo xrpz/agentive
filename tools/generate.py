@@ -450,6 +450,11 @@ def gen_plugins(ctx, units, payload):
     cman = dict(common, author={"name": b["owner"]["name"]}, license=ctx.pkg.get("license", "MIT"), keywords=b.get("keywords", []))
     if b["claude"].get("icon"):
         cman["icon"] = b["claude"]["icon"]
+    # engines["claude-code"]: Claude Code 2.1.323+ neither installs nor loads the plugin outside this range (its changelog; ignored by older
+    # builds). The floor is the design's own minimum (spec.compat.claude_code.min), so the manifest and the SessionStart check agree.
+    # [설계 판단] range syntax `>=x.y.z`: the docs say "range" without a grammar; node-semver ranges are what the plugin pages link for versions (미검증).
+    cc_min = ctx.design["spec"]["compat"]["claude_code"]["min"]
+    cman["engines"] = {"claude-code": f">={cc_min}"}
     if ctx.repo_url:
         cman["homepage"] = ctx.repo_url
         cman["repository"] = ctx.repo_url

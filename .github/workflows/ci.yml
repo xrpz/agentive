@@ -28,6 +28,13 @@ jobs:
         run: python3 tools/selftest.py component_tests
       - name: sample_repo_tests
         run: python3 tools/selftest.py sample_repo_tests
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: install the claude CLI (plugin_validate runs it for real)
+        run: npm i -g @anthropic-ai/claude-code@2.1.332   # pinned: the version `claude plugin validate --strict` was checked with; raise it on purpose
+      - name: plugin_validate
+        run: python3 tools/selftest.py plugin_validate
       - name: upgrade_matrix
         run: python3 tools/selftest.py upgrade_matrix
       - name: version_sync_check

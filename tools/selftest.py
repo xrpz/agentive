@@ -16,6 +16,9 @@ Steps (ids from design spec.framework_repo.self_tests.items, plus the ones marke
   component_tests     unittest discovery of tests/<area>/test_*.py except sample_repo, design and budget [설계 판단]; the areas run as
                       separate processes at the same time (at most os.cpu_count()), reported in sorted order with each time
   sample_repo_tests   deterministic init/apply tests on fixtures/{ts,py,go,java} (tests/sample_repo/, owner D)
+  plugin_validate     `claude plugin validate --strict` on the built Claude Code plugin and on the marketplace file; one SKIP line when the
+                      claude CLI is not installed (local dev), a failure when it is missing and CI is set [설계 판단]. Codex has no official
+                      plugin validator (codex-rs/cli/src/plugin_cmd.rs lists add, list, marketplace ...): 미검증, nothing is run for it
   upgrade_matrix      install every earlier release (tests/upgrade_matrix/releases.json) with its own engine, edit, run the current update [설계 판단]
   version_sync_check  package.json version == both plugin manifests == Codex skills.lock pinned_ref (== CHANGELOG.md head) [S50]
 
@@ -30,6 +33,7 @@ import concurrent.futures
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 import time
@@ -134,6 +138,29 @@ def step_sample_repo_tests():
     return rc == 0, tail(out)
 
 
+CLAUDE_PLUGIN_DIR = "plugins/claude-code/agentive"
+
+
+def step_plugin_validate(which=shutil.which, env=None):
+    """`claude plugin validate --strict` (official: plugins create page, exits 0 on `Validation passed`, --strict fails on warnings too)
+    on the generated Claude Code plugin directory and on .claude-plugin/marketplace.json (the repo root). Local dev without the CLI:
+    SKIP with the reason; with CI set the CLI must be there (the CI job installs the pinned package)."""
+    env = os.environ if env is None else env
+    exe = which("claude")
+    if not exe:
+        if env.get("CI"):
+            return False, "claude CLI not found but CI is set: the CI step installs it (npm i -g @anthropic-ai/claude-code@<pinned>)"
+        return None, "claude CLI not installed (local dev): skipped; CI runs it for real"
+    msgs, ok = [], True
+    ver = run([exe, "--version"])[1].splitlines()
+    msgs.append("claude " + (ver[0] if ver else "?"))
+    for target in (CLAUDE_PLUGIN_DIR, "."):
+        rc, out = run([exe, "plugin", "validate", "--strict", target])
+        ok = ok and rc == 0
+        msgs.append(f"{target}: " + ("Validation passed" if rc == 0 else f"exit {rc}\n{tail(out)}"))
+    return ok, "\n".join(msgs)
+
+
 def step_upgrade_matrix():
     if not _test_files(os.path.join("tests", "upgrade_matrix")):
         return False, "tests/upgrade_matrix/ has no test_*.py"
@@ -172,12 +199,13 @@ STEPS = {
     "size_budget": (step_size_budget, "shorten the installed AGENTS.md text or the skill descriptions the SIZE lines name (limits: tests/budget/test_size_budget.py); for a missing deny rule add the named Edit(...) line to permissions.deny in .claude/settings.json (confirm path: ask the author first)"),
     "component_tests": (step_component_tests, "fix the failing tests/<area> test or the code it covers"),
     "sample_repo_tests": (step_sample_repo_tests, "fix the engine or templates the failing fixture test names"),
+    "plugin_validate": (step_plugin_validate, "fix what `claude plugin validate --strict plugins/claude-code/agentive` names (generator source, not plugins/)"),
     "upgrade_matrix": (step_upgrade_matrix, "fix the engine or templates so update from the named release works, or add a missing release to tests/upgrade_matrix/releases.json (the file says how); needs the git history of the releases (CI: fetch-depth 0)"),
     "version_sync_check": (step_version_sync_check, "never edit versions by hand: npm run version (changesets), or python3 tools/generate.py"),
 }
 
 # ---------------------------------------------------------------- --fast: which steps a change needs [설계 판단]
-FAST_ALWAYS = ["generate_check", "schema_validation", "size_budget", "version_sync_check"]
+FAST_ALWAYS = ["generate_check", "schema_validation", "size_budget", "plugin_validate", "version_sync_check"]
 # A change under one of these prefixes can break tests outside its own area: the engine, the templates and the design are
 # installed or read by the engine, review, content and hooks tests alike (they install into temporary copies), so run everything.
 FULL_PREFIXES = ("src/repo-layer/", "src/engine/", "src/plugin/", "src/units/", "design/")

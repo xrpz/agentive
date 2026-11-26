@@ -12,7 +12,7 @@ sys.path.insert(0, os.path.join(ROOT, "tools"))
 import selftest  # noqa: E402
 
 ALL = list(selftest.STEPS)
-CHEAP = ["generate_check", "schema_validation", "size_budget", "version_sync_check"]
+CHEAP = ["generate_check", "schema_validation", "size_budget", "plugin_validate", "version_sync_check"]
 
 
 def run(*args):
@@ -40,7 +40,7 @@ class Plan(unittest.TestCase):
 
     def test_a_test_file_runs_its_own_area(self):
         steps, areas, why = selftest.plan(["tests/review/test_findings.py"])
-        self.assertEqual((steps, areas), (["generate_check", "schema_validation", "size_budget", "component_tests", "version_sync_check"], ["review"]))
+        self.assertEqual((steps, areas), (["generate_check", "schema_validation", "size_budget", "component_tests", "plugin_validate", "version_sync_check"], ["review"]))
         self.assertTrue(why.startswith("fast:"), why)
 
     def test_tool_and_doc_changes_run_the_generator_area(self):
@@ -52,11 +52,11 @@ class Plan(unittest.TestCase):
     def test_fixtures_and_sample_repo_tests_run_the_fixture_step_only(self):
         for path in ("fixtures/py/pyproject.toml", "tests/sample_repo/test_prove.py"):
             steps, areas, _ = selftest.plan([path])
-            self.assertEqual((steps, areas), (["generate_check", "schema_validation", "size_budget", "sample_repo_tests", "version_sync_check"], []), path)
+            self.assertEqual((steps, areas), (["generate_check", "schema_validation", "size_budget", "sample_repo_tests", "plugin_validate", "version_sync_check"], []), path)
 
     def test_upgrade_matrix_tests_run_the_upgrade_step_only(self):
         steps, areas, _ = selftest.plan(["tests/upgrade_matrix/releases.json"])
-        self.assertEqual((steps, areas), (["generate_check", "schema_validation", "size_budget", "upgrade_matrix", "version_sync_check"], []))
+        self.assertEqual((steps, areas), (["generate_check", "schema_validation", "size_budget", "plugin_validate", "upgrade_matrix", "version_sync_check"], []))
 
     def test_generated_outputs_and_version_files_add_nothing(self):
         steps, areas, why = selftest.plan(["plugins/claude-code/agentive/payload/index.json", "docs/map/index.html", "docs/DECISIONS.md",
@@ -82,6 +82,22 @@ class Steps(unittest.TestCase):
             ci = f.read()
         in_ci = re.findall(r"run: python3 tools/selftest\.py (\w+)\s*$", ci, re.M)
         self.assertEqual(in_ci, ALL)
+
+    def test_plugin_validate_skips_without_the_cli_and_fails_in_ci(self):
+        ok, msg = selftest.step_plugin_validate(which=lambda _n: None, env={})
+        self.assertIsNone(ok)
+        self.assertIn("not installed", msg)
+        ok, msg = selftest.step_plugin_validate(which=lambda _n: None, env={"CI": "true"})
+        self.assertIs(ok, False)
+        self.assertIn("CI is set", msg)
+
+    def test_plugin_validate_runs_the_real_cli_when_present(self):
+        import shutil
+        if not shutil.which("claude"):
+            self.skipTest("claude CLI not installed")
+        ok, msg = selftest.step_plugin_validate()
+        self.assertTrue(ok, msg)
+        self.assertIn("plugins/claude-code/agentive: Validation passed", msg)
 
     def test_an_unknown_step_or_option_is_refused(self):
         rc, out = run("no_such_step")
