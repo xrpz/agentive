@@ -18,11 +18,14 @@
       a subscription token from `claude setup-token`) is mapped to CLAUDE_CODE_OAUTH_TOKEN, which `claude -p` reads (never
       --bare: bare mode does not read it; code.claude.com/docs/en/authentication) [CIAUTH]. OAuth token first (E2E-12): with
       a token the API key is not mapped (Claude Code would prefer the key when both are set).
-      writes D/<side>/<case>/<run>.json (the counted findings) or D/<side>/<case>/<run>.failed. A case with base_sha and
+      writes D/<side>/<case>/<run>.json (the counted findings) or D/<side>/<case>/<run>.failed, and D/<side>/measured.json
+      {tool, tool_version, model}: the CLI version (`--version`) and the model ids (`modelUsage` of the JSON result; AGENTIVE_EVAL_MODEL
+      adds one; "unknown" when none is reported) the side was measured with (MEASUREDWITH). A case with base_sha and
       head_sha runs on those commits (EVALBUNDLE: pinned; the PR is fetched only when they are missing from the clone).
   agentive-reviewer-eval score --out D --baseline-ref S --candidate-ref S [--cases ..] [--n 3] [--not-run] [--no-baseline]
       [--reason-file F]
-      writes D/summary.json (schema reviewer-eval-case $defs.summary) and D/comment.md; deterministic. --no-baseline:
+      writes D/summary.json (schema reviewer-eval-case $defs.summary, with measured_with from the two measured.json files and
+      rescore_required for cases whose own measured_with differs) and D/comment.md; deterministic. --no-baseline:
       reason no_baseline (first install: nothing to compare, no eval-override needed).
   agentive-reviewer-eval comment <pr> --file D/comment.md
       creates or updates in place the PR comment marked <!-- agentive-reviewer-eval --> (gh api).
@@ -32,6 +35,7 @@ AGENTIVE_CLAUDE / AGENTIVE_CODEX override the claude / codex binary (tests use a
 import argparse
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -95,6 +99,28 @@ def build_run(tool, prompt, budget):
     if budget:
         cmd += ["--max-budget-usd", str(budget)]
     return cmd, env
+
+
+def tool_version(tool):
+    """MEASUREDWITH: the version the CLI reports (`<tool> --version`, the first x.y.z in its output), "unknown" when it cannot be run."""
+    exe = os.environ.get("AGENTIVE_CODEX", "codex") if tool == "codex" else os.environ.get("AGENTIVE_CLAUDE", "claude")
+    try:
+        r = subprocess.run([exe, "--version"], capture_output=True, text=True, timeout=60)
+    except (OSError, subprocess.TimeoutExpired):
+        return "unknown"
+    m = re.search(r"\d+\.\d+\.\d+(?:[-+][\w.]+)?", r.stdout + r.stderr)
+    return m.group(0) if r.returncode == 0 and m else "unknown"
+
+
+def run_models(stdout):
+    """The model ids one headless Claude run used: the keys of `modelUsage` in the `--output-format json` result (the SDK result
+    field); empty when the output has none (codex prints no such field: the model stays "unknown" unless AGENTIVE_EVAL_MODEL names it)."""
+    try:
+        doc = json.loads(stdout)
+    except ValueError:
+        return []
+    mu = doc.get("modelUsage") if isinstance(doc, dict) else None
+    return sorted(mu) if isinstance(mu, dict) else []
 
 
 def repo_root():
@@ -186,6 +212,7 @@ def cmd_run(a):
     tool = side_tool(repo, a.config_ref)
     side_dir = os.path.join(a.out, a.side)
     os.makedirs(side_dir, exist_ok=True)
+    models = set()
     for case in cases:
         try:
             base, head = _case_range(repo, case, slug)
@@ -206,6 +233,7 @@ def cmd_run(a):
                 env.pop("AGENTIVE_CI_API_KEY", None)
                 env.pop("AGENTIVE_CI_OAUTH_TOKEN", None)
                 r = subprocess.run(cmd, cwd=wt, env=env, capture_output=True, text=True, timeout=a.timeout)
+                models.update(run_models(r.stdout))
                 rep = common.read_json(os.path.join(work, "review-report.json"))
                 if rep is None:
                     with open(os.path.join(cdir, f"{i}.failed"), "w", encoding="utf-8") as fh:
@@ -218,6 +246,11 @@ def cmd_run(a):
             finally:
                 subprocess.run(["git", "-C", repo, "worktree", "remove", "--force", wt], capture_output=True)
         print(f"case {case['id']}: {a.n} run(s) on {a.side} with {tool}")
+    if os.environ.get("AGENTIVE_EVAL_MODEL"):
+        models.add(os.environ["AGENTIVE_EVAL_MODEL"])
+    if cases:      # MEASUREDWITH: what this side was measured with; `score` copies it into the summary
+        common.write_json(os.path.join(side_dir, "measured.json"),
+                          {"tool": tool, "tool_version": tool_version(tool), "model": sorted(models) or "unknown"})
     print(f"AGENTIVE_EVAL=ran side={a.side} tool={tool} cases={len(cases)} out={side_dir}; NEXT=agentive-reviewer-eval score")
     return 0
 
@@ -236,9 +269,12 @@ def _runs(out, side, cases, n):
 def cmd_score(a):
     repo = repo_root()
     cases, probs = evals.load_cases(os.path.join(repo, a.cases))
+    mb = common.read_json(os.path.join(a.out, "baseline", "measured.json"), None)
+    mc = common.read_json(os.path.join(a.out, "candidate", "measured.json"), None)
+    mw = {"baseline": mb, "candidate": mc} if mb and mc and not a.not_run else None
     s = evals.summarize(cases, _runs(a.out, "baseline", cases, a.n), _runs(a.out, "candidate", cases, a.n), a.n,
                         a.baseline_ref, a.candidate_ref, not_run=a.not_run, no_baseline=a.no_baseline,
-                        not_run_cause=a.not_run_cause if a.not_run else None)
+                        not_run_cause=a.not_run_cause if a.not_run else None, measured_with=mw)
     reasons = common.read_json(a.reason_file, []) if a.reason_file else common.read_json(
         os.path.join(repo, ".agents", "state", "reviewer-eval", "reasons.json"), [])
     os.makedirs(a.out, exist_ok=True)

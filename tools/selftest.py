@@ -221,6 +221,7 @@ FAST_RULES = [
     ("tests/design/", []),
     ("tests/budget/", []),
     ("tests/", None),            # tests/<area>/...: that area (resolved below)
+    ("tools/plugin_eval", ["plugin"]),     # tools/plugin_eval.py and tools/plugin_eval/ (the opt-in plugin eval, never a selftest step)
     ("tools/", ["generator"]),
     ("docs/", ["generator"]),
     ("README.md", ["content", "generator"]),

@@ -1,0 +1,5 @@
+schema_version: "1.1"
+name: chain-stays-out-of-a-one-line-fix
+tags: [chain]
+context:
+  scaffold_script: scaffold.sh

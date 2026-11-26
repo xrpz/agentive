@@ -289,6 +289,27 @@ test keeps its own directory and every assertion; a test that must watch a first
 `StaleIndex` tests) still runs it itself. The reviewer-eval flows (`tests/review/test_lint_eval.py`) were measured and left as they are:
 building the repository is 0.15 s of a 7.2 s flow, the rest is the two `run --side` calls and the stand-in tool.
 
+Plugin eval (impl26 B3, decisions `MEASUREDWITH` and `PLUGINEVAL`) [설계 판단 for the harness]: `python3 tools/plugin_eval.py {build|check|run|command}`
+runs `claude plugin eval` with a no-plugin baseline on an eval-only plugin that the tool assembles in a temporary directory (the generated plugin +
+the rendered repo skills as plugin skills + the repo layer's hooks as plugin hooks + `tools/plugin_eval/cases` + the installed AGENTS.md as each
+case's `append_system_prompt`), because an eval run loads no project-level `.claude/`, `CLAUDE.md` or `.mcp.json` (official page, "How runs are
+isolated"). Each case's scaffold script installs the repo layer into the workspace with the engine of the same plugin (`--scaffold`). Cases:
+`verify-runs-at-stop` (the Stop hook leaves `.agents/state/verify.json`), `guard-denies-force-push` (`BLOCKED push-force` in the trace),
+`chain-opens-for-ambiguous-request` and `chain-stays-out-of-a-one-line-fix` (the AGENTS.md chain entry; the second is a precision case whose Δ is
+expected to be 0), `pr-body-carries-the-review-record` (the `/pr` body has the three headings and the folded review record). The score comes from free
+graders; `tool_used: Skill` graders are only the "did the skill fire" indicator (excluded from the score in a two-arm run, official page). Pins
+(models, threshold, cost ceiling) are in `tools/plugin_eval/config.json`; the models are the ids of the official CI example. `check` loads the suite
+against the official case format with no model call (`tests/plugin/test_plugin_eval.py` does the same and also builds a workspace from every
+scaffold mode); `run` makes real model calls and is never a selftest step. CI: `.github/workflows/plugin-eval.yml`, `workflow_dispatch` only,
+needs `ANTHROPIC_API_KEY`, uploads `result.json` and the report; no schedule (FM.rules). Nothing is run for Codex (no plugin eval command exists).
+How a result decides a shrink item later: a rule, hook or skill is removed only when the case that exercises it scores the same without it
+(Δ <= 0 over at least 3 runs, model and CLI version pinned and quoted from `claudeVersion` of the JSON), a case with Δ > 0 is the reason to keep it,
+and a removal PR quotes the result. 미검증: no case has been run (it costs real model calls); whether a plugin Stop hook runs in the eval session and
+leaves the record; whether `$0`-free scaffold paths (`@@PLUGIN@@` is filled with the absolute plugin path) and the `modelUsage` key behave as the pages imply.
+Reviewer eval records (the other half of B3): the runner writes `measured.json` per side (`tool_version` from `<tool> --version`, `model` from
+the `modelUsage` keys of the JSON result, `unknown` when absent), `score` copies both into `summary.measured_with`, and a case file's own
+`measured_with` that differs makes the comment list `Re-score required` (diagnostic, never part of the verdict).
+
 The agent-run half of sample_repo_tests (fixture tasks through the headless standard command, only when
 init/apply paths change, 1-2 stacks) needs an API key; it is the separate optional workflow job
 `.github/workflows/selftest-agent-run.yml`.

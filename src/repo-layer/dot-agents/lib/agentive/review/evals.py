@@ -33,7 +33,9 @@ BUG_CLASSES = ("logic", "error-handling", "concurrency", "data-contract", "secur
 SHA40 = re.compile(r"^[0-9a-f]{40}$")
 DATE10 = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 CASE_KEYS = {"id", "pr", "label", "expected_findings", "budget_usd", "origin", "forbidden_findings",
-             "base_sha", "head_sha", "bug_class", "note", "source", "created", "drafted_by"}   # the last seven: optional, EVALBUNDLE
+             "base_sha", "head_sha", "bug_class", "note", "source", "created", "drafted_by",
+             "measured_with"}   # all but the first seven: optional (EVALBUNDLE; measured_with: MEASUREDWITH, impl26 B3)
+MEASURED_KEYS = ("tool", "tool_version", "model")   # MEASUREDWITH: what a score was measured with; a change of the model or the CLI version means re-score
 MARKER = "<!-- agentive-reviewer-eval -->"
 BASELINE_BIN = ".agents/bin/agentive-review"     # the program the baseline run calls (agentive-reviewer-eval run)
 CASES_HELP = "add one positive and one negative case under evals/reviewer/ (evals/reviewer/README.md)"
@@ -154,6 +156,8 @@ def _optional_fields(doc):
         p.append("created must be a date YYYY-MM-DD")
     if "drafted_by" in doc and doc["drafted_by"] not in ("distill", "human"):
         p.append("drafted_by must be distill or human")
+    if "measured_with" in doc:
+        p += _measured_problems(doc["measured_with"], "measured_with")
     if "source" in doc:
         src = doc["source"]
         if not (isinstance(src, dict) and src and set(src) <= {"finding_id", "reply", "range_basis"}):
@@ -166,6 +170,46 @@ def _optional_fields(doc):
             if "range_basis" in src and src["range_basis"] not in ("proposed", "confirmed"):
                 p.append("source.range_basis must be proposed or confirmed")
     return p
+
+
+def _measured_problems(mw, where):
+    """measured_with: {tool: claude | codex, tool_version: <x.y.z>, model: <model id, a list of them, or "unknown">}."""
+    if not (isinstance(mw, dict) and set(mw) <= set(MEASURED_KEYS) and {"tool_version", "model"} <= set(mw)):
+        return [f"{where} needs tool_version and model (and optionally tool)"]
+    p = []
+    if "tool" in mw and mw["tool"] not in ("claude", "codex"):
+        p.append(f"{where}.tool must be claude or codex")
+    if not (isinstance(mw["tool_version"], str) and mw["tool_version"].strip()):
+        p.append(f"{where}.tool_version must be a non-empty string")
+    m = mw["model"]
+    if not ((isinstance(m, str) and m.strip()) or (isinstance(m, list) and m and all(isinstance(x, str) and x.strip() for x in m))):
+        p.append(f"{where}.model must be a model id, a list of model ids, or \"unknown\"")
+    return p
+
+
+def model_key(mw):
+    """The model part of a measured_with as one comparable string (a list is sorted and joined)."""
+    m = (mw or {}).get("model")
+    return ",".join(sorted(m)) if isinstance(m, list) else (m or "unknown")
+
+
+def rescore_required(cases, now):
+    """Cases whose own measured_with (the model and CLI version their score was taken with) differs from `now` (the candidate side
+    of this run): [{id, then, now}]. A case without measured_with makes no claim; an unknown model on either side cannot be compared and
+    is not reported. Diagnostic: it takes no part in adopt_suggested (MEASUREDWITH)."""
+    out = []
+    for c in cases:
+        then = c.get("measured_with")
+        if not then or not now:
+            continue
+        diffs = []
+        if then.get("tool_version") != now.get("tool_version") and "unknown" not in (then.get("tool_version"), now.get("tool_version")):
+            diffs.append("tool_version")
+        if model_key(then) != model_key(now) and "unknown" not in (model_key(then), model_key(now)):
+            diffs.append("model")
+        if diffs:
+            out.append({"id": c["id"], "differs": diffs, "then": then, "now": now})
+    return out
 
 
 def load_cases(case_dir):
@@ -270,7 +314,8 @@ def _side(cases, runs_by_case, n):
 NOT_RUN_CAUSES = ("fork", "no_secret")      # E2E-42: why the reviewer could not run (absent: unknown)
 
 
-def summarize(cases, baseline_runs, candidate_runs, n, baseline_ref, candidate_ref, not_run=False, no_baseline=False, not_run_cause=None):
+def summarize(cases, baseline_runs, candidate_runs, n, baseline_ref, candidate_ref, not_run=False, no_baseline=False, not_run_cause=None,
+              measured_with=None):
     """reviewer-eval-case.schema.json $defs.summary. Order: not_run, no_baseline, insufficient_cases, newly_missed, ...
     wrong_place (optional) is a diagnostic: it takes no part in the order or in adopt_suggested."""
     pos = [c for c in cases if c["label"] == "positive"]
@@ -292,6 +337,11 @@ def summarize(cases, baseline_runs, candidate_runs, n, baseline_ref, candidate_r
         "newly_missed": sorted(c["id"] for c in pos if c_res[c["id"]] < maj <= b_res[c["id"]]),
         "newly_noisy": sorted(c["id"] for c in neg if c_res[c["id"]] < maj <= b_res[c["id"]]),
     }
+    if measured_with:      # MEASUREDWITH: {baseline: {tool, tool_version, model}, candidate: {...}}; written by `score` from the runner's records
+        summary["measured_with"] = measured_with
+        stale = rescore_required(cases, measured_with.get("candidate"))
+        if stale:      # diagnostic, like wrong_place: never part of pass, newly_* or adopt_suggested
+            summary["rescore_required"] = [{"id": x["id"], "differs": x["differs"]} for x in stale]
     wp = [{"id": c["id"], "baseline_runs": b_wp[c["id"]], "candidate_runs": c_wp[c["id"]]} for c in pos if b_wp[c["id"]] or c_wp[c["id"]]]
     if wp:      # optional, diagnostic only (EVALBUNDLE); absent when no run posted a finding on the right file at another line
         summary["wrong_place"] = wp
@@ -527,6 +577,24 @@ def _changed_section(s, detail):
     return vis, fold
 
 
+def _mw_text(mw):
+    return f"{mw.get('tool') or 'cli'} {mw['tool_version']}, model {model_key(mw)}"
+
+
+def measured_lines(s):
+    """MEASUREDWITH: what the score was measured with and which cases need a re-score (empty without a record)."""
+    mw = s.get("measured_with")
+    if not mw:
+        return []
+    b, c = mw.get("baseline"), mw.get("candidate")
+    lines = [f"Measured with: {_mw_text(c)}." if b == c or not b else f"Measured with: before {_mw_text(b)}; after {_mw_text(c)}."]
+    if s.get("rescore_required"):
+        ids = ", ".join(f"`{x['id']}` ({'/'.join(x['differs'])})" for x in s["rescore_required"])
+        lines.append(f"Re-score required: {ids} were last scored with another model or CLI version. Read this result, then set "
+                     "`measured_with` in each case file to the values above (a tier 2 change, as for any case).")
+    return lines
+
+
 def comment(summary, reasons, notes=(), detail=None, secrets=None):
     """The one sticky agentive-reviewer-eval comment (COMMENTUX, EVALBUNDLE): marker, verdict heading, what the comment is, Result,
     What to do, the score table only for a real comparison, then outside the fold one noise sentence, a reference-only line while
@@ -562,6 +630,7 @@ def comment(summary, reasons, notes=(), detail=None, secrets=None):
                   f"(spread {q['baseline_spread']}) | {q['candidate_mean']} |", "",
                   f"Same {len(s['cases'])} cases on both sides, {s['n_runs']} runs each: compare case by case; a one-case change can be "
                   "run-to-run noise, and this is not a statistical test."]
+        lines += measured_lines(s)
         if p["total"] < MIN_POSITIVES:
             lines.append(f"Reference only: fewer than {MIN_POSITIVES} positive cases ({p['total']} now), so one case can move the totals; "
                          "read the changed cases.")

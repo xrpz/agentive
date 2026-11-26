@@ -1,0 +1,55 @@
+# agentive-unit: config.plugin-eval
+# design: decisions.accepted[PLUGINEVAL], decisions.accepted[MEASUREDWITH], spec.framework_repo (FM.rules: never on a schedule)
+# Manual, opt-in eval of agentive itself with `claude plugin eval` and a no-plugin baseline (tools/plugin_eval.py). Real model calls
+# on the ANTHROPIC_API_KEY secret: cases x runs x 2 arms plus judge calls, capped by max_cost_usd in tools/plugin_eval/config.json.
+# Not part of selftest and not a required check. The result (result.json, report.html) is uploaded as an artifact; quote it with its
+# claudeVersion and the pinned models (decisions.accepted[MEASUREDWITH]).
+name: plugin-eval
+"on":
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  plugin-eval:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      HAS_KEY: ${{ secrets.ANTHROPIC_API_KEY != '' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"      # the engine of the plugin under test needs python3 >= 3.13
+      - run: python3 -m pip install -r requirements-dev.txt
+      - run: python3 tools/generate.py --check
+      - name: no API key
+        if: env.HAS_KEY != 'true'
+        run: echo "PLUGIN_EVAL=skipped (no ANTHROPIC_API_KEY secret)"
+      - uses: actions/setup-node@v4
+        if: env.HAS_KEY == 'true'
+        with:
+          node-version: "22"
+      - uses: astral-sh/setup-uv@v5
+        if: env.HAS_KEY == 'true'
+      - name: sandbox backend for the Bash grant (Linux needs bubblewrap and socat)
+        if: env.HAS_KEY == 'true'
+        run: sudo apt-get update && sudo apt-get install -y bubblewrap socat
+      - name: install the claude CLI (pinned, as in ci.yml)
+        if: env.HAS_KEY == 'true'
+        run: npm i -g @anthropic-ai/claude-code@2.1.332
+      - name: check the suite (no model call)
+        if: env.HAS_KEY == 'true'
+        run: python3 tools/plugin_eval.py check --out "$RUNNER_TEMP/plugin-eval"
+      - name: run the suite
+        if: env.HAS_KEY == 'true'
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: python3 tools/plugin_eval.py run --out "$RUNNER_TEMP/plugin-eval"
+      - uses: actions/upload-artifact@v4
+        if: always() && env.HAS_KEY == 'true'
+        with:
+          name: plugin-eval-result
+          path: |
+            ${{ runner.temp }}/plugin-eval/result.json
+            ${{ runner.temp }}/plugin-eval/agentive-eval/evals/results/**
+          if-no-files-found: warn

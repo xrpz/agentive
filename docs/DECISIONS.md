@@ -4,7 +4,7 @@
 Index of the decision register in `design/framework.yaml` (`decisions.*`). Each id is stable and never reused.
 Read the full entry with `python3 tools/design.py get decisions.accepted[<ID>]` (line numbers: `design/INDEX.md`); the map page is `docs/map/index.html`.
 
-## Accepted design decisions (111)
+## Accepted design decisions (113)
 
 | id | title | decided_at | revised_at | spec_ref |
 |---|---|---|---|---|
@@ -119,6 +119,8 @@ Read the full entry with `python3 tools/design.py get decisions.accepted[<ID>]` 
 | TRUSTBASE | the AI review step reads instructions, agents, skills and settings from the base commit, never from the PR that changes them (B5) | 2026-11-26 |  | ['spec.review_pipeline.gate_protection', 'spec.review_pipeline.stages[RV2].protected_check_config', 'spec.work_loop.ci_ai_review_floor', 'decisions.accepted[CISPLIT]', 'decisions.accepted[WFCHANGE]', 'decisions.accepted[SECPATHS]'] |
 | SAMPAUDIT | a risk-weighted share of the automated approvals goes to a human before the merge, and every automated approval decision leaves an audit record (item 1; revises the removed U1.b) | 2026-11-26 |  | ['spec.review_pipeline.auto_merge_policy.conditions[U1.e]', 'spec.review_pipeline.stages[RV8]', 'decisions.accepted[DEFAULTS]', 'decisions.removed[U1.b]', 'contracts[review-report]', 'contracts[pr-body-agentive-review]', 'contracts[project-config]'] |
 | TESTGUARD | weakened tests are detected by code, locally at Stop and in CI, and sent to a human (item B1) | 2026-11-26 |  | ['spec.stop_hook', 'spec.review_pipeline.stages[RV1]', 'spec.review_pipeline.stages[RV2]', 'spec.review_pipeline.stages[RV8]', 'contracts[stop-state]', 'contracts[review-report]'] |
+| MEASUREDWITH | a reviewer eval score names the model and CLI version it was measured with, and a change of either asks for a re-score (item B3, part 1) | 2026-11-26 |  | ['spec.review_pipeline.reviewer_eval', 'contracts[reviewer-eval-case]'] |
+| PLUGINEVAL | an opt-in eval suite of agentive itself with a no-plugin baseline, in this framework repo only (item B3, part 2) | 2026-11-26 |  | ['spec.framework_repo', 'spec.review_pipeline.reviewer_eval'] |
 
 ## Decided user choices (U items) (5)
 

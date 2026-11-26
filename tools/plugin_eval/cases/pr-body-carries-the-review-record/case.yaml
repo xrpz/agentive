@@ -1,0 +1,5 @@
+schema_version: "1.1"
+name: pr-body-carries-the-review-record
+tags: [pr]
+context:
+  scaffold_script: scaffold.sh

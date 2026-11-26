@@ -35,6 +35,7 @@ note: "session may be None"      # one human-readable line; never scored
 source: {finding_id: F-1a2b3c4d5e, reply: wrong, range_basis: proposed}   # where a drafted case came from; range_basis: proposed | confirmed
 created: 2026-11-02
 drafted_by: distill              # distill | human
+measured_with: {tool: claude, tool_version: 2.1.332, model: [claude-sonnet-5-5]}   # the CLI version and model the score was last taken with
 ```
 
 `expected_findings` lines are the lines of `head_sha` (the new side of the PR). Keep a range narrow (one bug, one range, at most
@@ -50,6 +51,14 @@ label: negative
 forbidden_findings:              # optional: where a finding must not appear again
   - {file: src/net/retry.py, line_from: 10, line_to: 18}
 ```
+
+## What a score was measured with
+
+The comment says which CLI version and model each side ran with (`Measured with: ...`; the runner reads `<tool> --version` and the
+`modelUsage` of the JSON result; `unknown` when the tool prints none, set `AGENTIVE_EVAL_MODEL` to name one). A case with
+`measured_with` that names another model or CLI version than this run is listed under `Re-score required`: read the result, then
+set `measured_with` in the case file to the values shown (a tier 2 change, like any case change). Nothing re-runs on a schedule;
+the notice appears on the next PR that changes the reviewer. It never changes the verdict.
 
 ## Scoring (what the CI comment reports)
 - Counted findings are the ones the pipeline would post: severity important, on a line, not refuted by the verifier.

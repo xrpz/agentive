@@ -11,6 +11,8 @@
 # review.pipeline.ci_tool, else the tool that ran init); the runner agentive-reviewer-eval maps AGENTIVE_CI_API_KEY to the
 # variable its tool reads (claude: ANTHROPIC_API_KEY, codex: CODEX_API_KEY) and, on claude, AGENTIVE_CI_OAUTH_TOKEN (secret
 # CLAUDE_CODE_OAUTH_TOKEN, a subscription token from `claude setup-token`) to CLAUDE_CODE_OAUTH_TOKEN, for the single run only.
+# MEASUREDWITH (impl26 B3): each side records the CLI version and the model it ran with (the install below is unpinned, so the record is
+# what tells two scores apart); a case whose own measured_with differs is listed as 'Re-score required' in the comment, never in the verdict.
 # Which Claude secrets are passed follows review.pipeline.ci_auth (decisions.accepted[CIAUTH], default both); with both the
 # OAuth token goes first: AGENTIVE_CI_API_KEY is empty while CLAUDE_CODE_OAUTH_TOKEN is set (E2E-12).
 name: reviewer-eval

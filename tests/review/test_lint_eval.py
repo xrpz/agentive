@@ -228,6 +228,13 @@ class ReviewerEvalTest(unittest.TestCase):
             self.assertEqual(rc, 0, out)
             s = json.loads(h.read(os.path.join(out_dir, "summary.json")))
             self.assertEqual((s["newly_caught"], s["newly_missed"], s["reason"], s["adopt_suggested"]), (["divzero"], [], "improved", True))
+            # MEASUREDWITH: each side records the tool, its version and its model; the stand-ins print neither, so both are "unknown"
+            for side in ("baseline", "candidate"):
+                self.assertEqual(json.loads(h.read(os.path.join(out_dir, side, "measured.json"))),
+                                 {"tool": expect_tool, "tool_version": "unknown", "model": "unknown"})
+            self.assertEqual(s["measured_with"]["candidate"]["tool"], expect_tool)
+            self.assertNotIn("rescore_required", s)
+            self.assertIn("Measured with: " + expect_tool + " unknown, model unknown.", h.read(os.path.join(out_dir, "comment.md")))
         finally:
             repo.cleanup()
 

@@ -1,0 +1,9 @@
+{
+  "_doc": "Pins of the opt-in plugin eval (decisions.accepted[PLUGINEVAL]). The model ids are the ones the official CI example uses (code.claude.com/docs/en/plugin-evals, 'Run evals in CI'): pin them so a model rollout is not mistaken for a plugin change, and quote a result together with them and the claudeVersion of its JSON. Raise them on purpose and re-run.",
+  "model": "claude-sonnet-5",
+  "judge_model": "claude-haiku-4-5",
+  "threshold": 0.8,
+  "runs": 3,
+  "max_cost_usd": 20,
+  "allow_tools": ["Bash", "Write", "Edit"]
+}

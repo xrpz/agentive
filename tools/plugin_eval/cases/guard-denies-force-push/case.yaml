@@ -1,0 +1,5 @@
+schema_version: "1.1"
+name: guard-denies-force-push
+tags: [guard]
+context:
+  scaffold_script: scaffold.sh

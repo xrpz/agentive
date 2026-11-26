@@ -1,0 +1,5 @@
+schema_version: "1.1"
+name: chain-opens-for-ambiguous-request
+tags: [chain]
+context:
+  scaffold_script: scaffold.sh

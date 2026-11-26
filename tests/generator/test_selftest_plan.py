@@ -49,6 +49,12 @@ class Plan(unittest.TestCase):
             self.assertEqual(areas, ["generator"], path)
             self.assertIn("component_tests", steps)
 
+    def test_the_plugin_eval_tool_runs_the_plugin_area(self):
+        for path in ("tools/plugin_eval.py", "tools/plugin_eval/cases/guard-denies-force-push/prompt.md", "tools/plugin_eval/config.json"):
+            steps, areas, _ = selftest.plan([path])
+            self.assertEqual(areas, ["plugin"], path)
+            self.assertNotIn("plugin_eval", steps)
+
     def test_fixtures_and_sample_repo_tests_run_the_fixture_step_only(self):
         for path in ("fixtures/py/pyproject.toml", "tests/sample_repo/test_prove.py"):
             steps, areas, _ = selftest.plan([path])

@@ -188,6 +188,10 @@
         "human"
       ],
       "description": "optional: who wrote the case file"
+    },
+    "measured_with": {
+      "$ref": "#/$defs/measured_with",
+      "description": "optional: the model and CLI version this case was last scored with. The reviewer-eval comment lists `rescore_required` when the run's candidate side used another model or CLI version; a human updates the field in a tier 2 PR after reading the result. A case without it makes no claim"
     }
   },
   "allOf": [
@@ -409,6 +413,53 @@
             "no_secret"
           ],
           "description": "only with reason not_run (E2E-42): fork = the PR comes from a fork (GitHub gives fork runs no repository secrets); no_secret = a same-repository PR whose repository has no CI credential secret (CLAUDE_CODE_OAUTH_TOKEN or ANTHROPIC_API_KEY, OPENAI_API_KEY for codex). Absent: the cause is not known"
+        },
+        "measured_with": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "baseline",
+            "candidate"
+          ],
+          "description": "MEASUREDWITH: what each side of this comparison was measured with, written by `agentive-reviewer-eval score` from D/<side>/measured.json; absent when no side ran (not_run, no_baseline) or an older runner wrote the result",
+          "properties": {
+            "baseline": {
+              "$ref": "#/$defs/measured_with"
+            },
+            "candidate": {
+              "$ref": "#/$defs/measured_with"
+            }
+          }
+        },
+        "rescore_required": {
+          "type": "array",
+          "minItems": 1,
+          "description": "optional diagnostic (MEASUREDWITH, never part of pass, newly_* or adopt_suggested): cases whose own measured_with names another model or CLI version than the candidate side of this run (an unknown model or version on either side is not compared); `differs` says which one",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "differs"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^[a-z0-9][a-z0-9._-]*$"
+              },
+              "differs": {
+                "type": "array",
+                "minItems": 1,
+                "uniqueItems": true,
+                "items": {
+                  "enum": [
+                    "tool_version",
+                    "model"
+                  ]
+                }
+              }
+            }
+          }
         }
       },
       "allOf": [
@@ -517,6 +568,46 @@
           }
         }
       ]
+    },
+    "measured_with": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "tool_version",
+        "model"
+      ],
+      "description": "what a score was measured with (MEASUREDWITH, 2026-11-26): the CLI and its version, and the model id(s) that did the work. A score is valid for that pair only: when either changes the score is re-taken (peers: agent-skills evals README 'pin --model and record the Claude Code version whenever you report numbers'; wshobson docs/verified README records the model and runner version of its scores)",
+      "properties": {
+        "tool": {
+          "enum": [
+            "claude",
+            "codex"
+          ]
+        },
+        "tool_version": {
+          "type": "string",
+          "minLength": 1,
+          "description": "`<tool> --version` of the runner: x.y.z, or \"unknown\" when it could not be read"
+        },
+        "model": {
+          "oneOf": [
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          ],
+          "description": "the model id(s) the headless runs used (modelUsage keys of the JSON result), or \"unknown\" when the tool reports none (Codex; set AGENTIVE_EVAL_MODEL)"
+        }
+      }
     }
   }
 }
