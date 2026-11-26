@@ -1,5 +1,5 @@
 # agentive-unit: rl.ci.agentive-review
-# design: spec.repo_layer.files[f-ci], spec.work_loop.ci_ai_review_floor, decisions.accepted[CITOOL], decisions.accepted[CIAUTH], decisions.accepted[CISPLIT], decisions.accepted[CISETUP], decisions.accepted[BOTPR], decisions.accepted[INDEPCI], decisions.accepted[LABELTRIGGER], decisions.accepted[AISTEPFAIL], decisions.accepted[WFCHANGE], spec.review_pipeline.stages[RV8].rerun, spec.review_pipeline.gate_protection, spec.repo_checks.dependency_review, decisions.accepted[DEPHUMAN], spec.work_loop.ci_independence_check
+# design: spec.repo_layer.files[f-ci], spec.work_loop.ci_ai_review_floor, decisions.accepted[CITOOL], decisions.accepted[CIAUTH], decisions.accepted[CISPLIT], decisions.accepted[CISETUP], decisions.accepted[BOTPR], decisions.accepted[INDEPCI], decisions.accepted[LABELTRIGGER], decisions.accepted[AISTEPFAIL], decisions.accepted[WFCHANGE], decisions.accepted[TRUSTBASE], spec.review_pipeline.stages[RV8].rerun, spec.review_pipeline.gate_protection, spec.repo_checks.dependency_review, decisions.accepted[DEPHUMAN], spec.work_loop.ci_independence_check
 # Jobs outer-verbs, dependency-review, ai-review, agentive-independence and agentive-review-gate in one workflow so the
 # gate reads the other results through `needs` [design judgment: one file, job ids = design job names = check names].
 # Required check in branch protection: agentive-review-gate (never path-filtered, never skipped: `if: always()`).
@@ -55,6 +55,10 @@
 # workflow for the same head has not completed (REST list workflow runs: head_sha, event; the wait is bounded, AGENTIVE_REVIEW_WAIT).
 # A workflow-level concurrency group per PR was not used: a newer pending run cancels the older pending run of its group, which
 # could cancel the push run that produces the artifact (docs: workflow-syntax#concurrency).
+# TRUSTBASE (B5): the ai-review job checks out the PR head so the reviewers cite head-tree file:line, but its first step after the
+# checkout (restore-base-instructions) puts every instruction, agent, skill and settings file back to its base-commit version and
+# deletes the ones the PR added, so a PR cannot steer the reviewers that judge it. A change to such a file is tier 2 anyway (RV2
+# protected_check_config). claude-code-action restores a shorter root list itself (docs/security.md); this step covers the rest and Codex.
 # unverified: claude-code-action inputs prompt / claude_args (docs of the action, S17); the check run of a
 # pull_request_review_comment run lands on the PR head commit.
 name: agentive-review
@@ -146,6 +150,26 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha }}   # the reviewers cite head-tree file:line (V2-15), not the merge ref
           fetch-depth: 0
+      - id: restore-base-instructions
+        name: instructions, agents, skills and settings come from the base commit (TRUSTBASE)
+        run: |
+          # The reviewers read the head tree (file:line citations) but never an instruction the PR itself changed: every file
+          # below is put back to its BASE_SHA version and a file the PR added is deleted, before any step or action loads them.
+          # Plain git, no code of the PR runs here. GIT_LITERAL_PATHSPECS: a file name is never a glob.
+          set -eu
+          export GIT_LITERAL_PATHSPECS=1
+          git cat-file -e "$BASE_SHA^{commit}" 2>/dev/null || git fetch --no-tags --depth=1 origin "$BASE_SHA"
+          pat='(^|/)(CLAUDE|CLAUDE\.local|AGENTS|AGENTS\.override|GEMINI)\.md$|^(code_review|REVIEW)\.md$|(^|/)\.(claude|codex)/|^\.agents/|(^|/)\.agents/skills/|^\.(mcp|claude)\.json$|^\.(gitmodules|ripgreprc)$|^\.husky/'
+          list() { git ls-tree -r -z --name-only "$1" | { grep -zE "$pat" || true; } | { grep -zvE '^\.agents/state/' || true; } | sort -z; }
+          list "$BASE_SHA" > "$RUNNER_TEMP/trustbase-base.lst"
+          list HEAD > "$RUNNER_TEMP/trustbase-head.lst"
+          comm -z -13 "$RUNNER_TEMP/trustbase-base.lst" "$RUNNER_TEMP/trustbase-head.lst" > "$RUNNER_TEMP/trustbase-added.lst"
+          xargs -0 -r rm -rf -- < "$RUNNER_TEMP/trustbase-added.lst"
+          if [ -s "$RUNNER_TEMP/trustbase-base.lst" ]; then
+            git restore --source="$BASE_SHA" --worktree --pathspec-from-file="$RUNNER_TEMP/trustbase-base.lst" --pathspec-file-nul
+          fi
+          n=$(git diff --name-only --no-renames "$BASE_SHA" HEAD -z -- . | tr '\0' '\n' | { grep -E "$pat" || true; } | { grep -vE '^\.agents/state/' || true; } | wc -l)
+          echo "::notice title=trusted instructions::$n instruction, agent, skill or settings file(s) the PR changes are read from the base commit by the AI reviewers"
       - id: outer-results
         name: results of the outer-verbs job (the verifier reads them; this job runs no PR code)
         uses: actions/download-artifact@v4

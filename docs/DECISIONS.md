@@ -4,7 +4,7 @@
 Index of the decision register in `design/framework.yaml` (`decisions.*`). Each id is stable and never reused.
 Read the full entry with `python3 tools/design.py get decisions.accepted[<ID>]` (line numbers: `design/INDEX.md`); the map page is `docs/map/index.html`.
 
-## Accepted design decisions (108)
+## Accepted design decisions (109)
 
 | id | title | decided_at | revised_at | spec_ref |
 |---|---|---|---|---|
@@ -116,6 +116,7 @@ Read the full entry with `python3 tools/design.py get decisions.accepted[<ID>]` 
 | OPENWORK | SessionStart startup and resume name the open plan.md checkboxes of the branch's task even when there is no handoff file; the PR-comment generalization and the resume gate stay deferred, the plan.md `## Handoff` section is rejected | 2026-11-02 |  | ['spec.handoff.reader', 'spec.init_apply.session_start', 'spec.deferred', 'decisions.accepted[HANDOFF]', 'decisions.accepted[CTX]'] |
 | HANDOFFREPORT | a run with no human present ends with the HANDOFF line: the Stop hook adds it to its systemMessage when a handoff was written in this session and the guard deny reason asks the agent to end its final message with it; the PR comment is deferred until UV-40 is verified (amends HANDOFF: spec.handoff.writers; the design no longer claims a PR comment) | 2026-11-02 |  | ['spec.handoff', 'spec.stop_hook', 'spec.deferred', 'contracts[stop-state]', 'decisions.accepted[HANDOFF]', 'unverified[UV-40]'] |
 | EXPLAINOPT | an uncertain local tier makes the Explainer optional: only a predicted tier 2 requires it, and CI stays authoritative (E2E-65) | 2026-11-03 |  | ['spec.work_loop.pr_explainer', 'spec.work_loop.pr_skill', 'decisions.accepted[EXPLAIN]', 'decisions.accepted[LOCALTIER]'] |
+| TRUSTBASE | the AI review step reads instructions, agents, skills and settings from the base commit, never from the PR that changes them (B5) | 2026-11-26 |  | ['spec.review_pipeline.gate_protection', 'spec.review_pipeline.stages[RV2].protected_check_config', 'spec.work_loop.ci_ai_review_floor', 'decisions.accepted[CISPLIT]', 'decisions.accepted[WFCHANGE]', 'decisions.accepted[SECPATHS]'] |
 
 ## Decided user choices (U items) (5)
 

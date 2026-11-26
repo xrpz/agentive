@@ -432,6 +432,20 @@ expressions documentation, not observed in a run with both secrets).
 
 Details: docs/impl/D.md §3 items 17-21, docs/impl/B.md §4 items 16-17.
 
+### Reviewer instructions come from the base commit (TRUSTBASE, 2026-11-26) [설계 판단 for the file set and the mechanism]
+
+- The `ai-review` step `restore-base-instructions` (plain git, right after the head checkout) restores from `BASE_SHA` every tracked
+  file of the instruction set and deletes the ones the PR added: `CLAUDE.md`, `CLAUDE.local.md`, `AGENTS.md`, `AGENTS.override.md`,
+  `GEMINI.md` at any depth; `code_review.md`, `REVIEW.md`, `.agents/**` (not `.agents/state/`) at the root; `.claude/` and `.codex/`
+  and `.agents/skills/` at any depth; `.mcp.json`, `.claude.json`, `.gitmodules`, `.ripgreprc`, `.husky/`. It is a superset of the list
+  claude-code-action restores itself, so both layers run. Mechanism: `git restore --source=$BASE_SHA --worktree` with a NUL
+  pathspec file and `GIT_LITERAL_PATHSPECS=1`; HEAD and the index are not touched, so source code stays the head tree.
+- Why `.agents/**` as a whole: the `agentive-review` CLI and its library run in this job from the work tree; a PR must not replace
+  the pipeline code that holds the model credential. The gate job already ran the base copy (`base-gate`).
+- RV2 `protected_check_config` gained `**/.claude/**` and `**/.codex/**` (nested too), `**/.agents/skills/**`,
+  `**/AGENTS.override.md` and `.mcp.json`; the earlier root-only `.claude/**` and `.codex/**` entries became the `**/` form.
+- Test: `tests/review/test_trustbase.py` runs the rendered step against a throwaway git repo for both CI tools.
+
 ## 9. Open issues (verify before relying on them)
 
 1. Resolved 2026-10-28: Claude plugin skills reach the shared payload as `${CLAUDE_PLUGIN_ROOT}/payload`; the plugin

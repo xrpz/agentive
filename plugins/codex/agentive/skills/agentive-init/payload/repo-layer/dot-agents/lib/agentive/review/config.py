@@ -76,13 +76,16 @@ DEFAULT_RULES = {
 # spec.review_pipeline.stages[RV2].protected_check_config.paths: built in, cannot be removed (disableable: false)
 PROTECTED_CHECK_CONFIG = [
     {"glob": ".agents/**", "except": [".agents/state/**"]},
-    {"glob": ".claude/**"},
-    {"glob": ".codex/**"},
+    {"glob": "**/.claude/**"},          # TRUSTBASE: also a nested .claude/ (agents, skills, rules, settings)
+    {"glob": "**/.codex/**"},
     {"glob": "code_review.md"},
     {"glob": "evals/reviewer/**"},
 ]
 # REVIEW.md (the managed copy of code_review.md) is a review rule file too (reviewer_eval.when) [design judgment]
 PROTECTED_CHECK_CONFIG.append({"glob": "REVIEW.md"})
+# TRUSTBASE (B5): the other files the AI reviewers load as instructions, agents, skills or tool settings: a nested .agents/skills
+# (Codex scans .agents/skills in every directory up to the root), AGENTS.override.md (Codex reads it before AGENTS.md) and .mcp.json
+PROTECTED_CHECK_CONFIG += [{"glob": "**/.agents/skills/**"}, {"glob": "**/AGENTS.override.md"}, {"glob": ".mcp.json"}]
 # SECPATHS L1: the CODEOWNERS file decides who must approve, so a change to it is a gate change (GitHub advises protecting it
 # with a code owner of its own); the three places GitHub reads, in its lookup order
 PROTECTED_CHECK_CONFIG += [{"glob": ".github/CODEOWNERS"}, {"glob": "CODEOWNERS"}, {"glob": "docs/CODEOWNERS"}]
