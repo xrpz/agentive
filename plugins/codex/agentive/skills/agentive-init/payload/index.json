@@ -635,6 +635,15 @@
       "owner": "A",
       "class": "whole",
       "confirm_scope": [],
+      "install": ".agents/lib/agentive/testguard.py",
+      "template": "repo-layer/dot-agents/lib/agentive/testguard.py",
+      "executable": false
+    },
+    {
+      "unit": "lib.agentive",
+      "owner": "A",
+      "class": "whole",
+      "confirm_scope": [],
       "install": ".agents/lib/agentive/verb.py",
       "template": "repo-layer/dot-agents/lib/agentive/verb.py",
       "executable": false

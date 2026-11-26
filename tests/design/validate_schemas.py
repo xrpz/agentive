@@ -875,7 +875,7 @@ cond("view: every map item and arrow has layout", {i['id'] for i in mv['items']}
 ch = sp['spec_stage']['chain']
 cond("framework.yaml: CHAIN accepted, decided_by user 2026-10-27, id not retired", acc.get('CHAIN', {}).get('decided_by') == 'user' and acc['CHAIN']['decided_at'] == '2026-10-27' and 'CHAIN' not in removed_ids and ch['id'] == 'CHAIN')
 cond("framework.yaml: CHAIN records that it overrides SPEC and SMALLPR", any('SPEC' in o for o in acc['CHAIN']['overrides']) and any('SMALLPR' in o for o in acc['CHAIN']['overrides']) and 'CHAIN' in acc['SPEC'].get('superseded_in_part', '') and 'CHAIN' in acc['SMALLPR'].get('superseded_in_part', ''))
-cond("framework.yaml: S124-S233 defined, next free id S234 not used (S155-S161 added by C-067, S162 by CITOOL, S163-S169 by SECPATHS, S170 by SKILLPATHS 2026-10-29, S171-S172 by CIAUTH, S173-S182 by AISTEPFAIL, WFCHANGE and U6 rubric@2, S183-S197 by BASEREF, VERIFYTREE and REGIONNOSHA 2026-10-30, S198-S202 by NOBASELINE 2026-10-31, S203-S208 by DEPHUMAN 2026-10-31, S209-S215 by the EXPLAIN visual revision 2026-10-31, S216-S227 by COMMENTUX, HEADLESSHINT and E2E-33/36 2026-11-01, S228-S230 by SKILLGUIDE 2026-11-01, S231-S232 by TRUSTBASE and S233 by SAMPAUDIT 2026-11-26)", {f'S{i}' for i in range(124, 234)} <= src_ids and 'S234' not in src_ids)
+cond("framework.yaml: S124-S237 defined, next free id S238 not used (S155-S161 added by C-067, S162 by CITOOL, S163-S169 by SECPATHS, S170 by SKILLPATHS 2026-10-29, S171-S172 by CIAUTH, S173-S182 by AISTEPFAIL, WFCHANGE and U6 rubric@2, S183-S197 by BASEREF, VERIFYTREE and REGIONNOSHA 2026-10-30, S198-S202 by NOBASELINE 2026-10-31, S203-S208 by DEPHUMAN 2026-10-31, S209-S215 by the EXPLAIN visual revision 2026-10-31, S216-S227 by COMMENTUX, HEADLESSHINT and E2E-33/36 2026-11-01, S228-S230 by SKILLGUIDE 2026-11-01, S231-S232 by TRUSTBASE, S233 by SAMPAUDIT and S234-S237 by TESTGUARD 2026-11-26)", {f'S{i}' for i in range(124, 238)} <= src_ids and 'S238' not in src_ids)
 cond("framework.yaml: chain flow is intent -> spec -> plan -> feature", [f['stage'] for f in ch['flow']] == ['intent', 'spec', 'plan', 'feature'])
 cond("framework.yaml: spec.md has no ## Intent section and links intent.md", 'no ## Intent section' in sp['spec_stage']['files']['spec'] and '`Intent: docs/plans/<slug>/intent.md`' in sp['spec_stage']['files']['spec'])
 cond("framework.yaml: intent.md uses the five Academy section names", all(h in sp['spec_stage']['files']['intent'] for h in ['## Problem', '## Proposed outcome', '## Affected users and systems', '## Constraints', '## Open questions']))
@@ -1391,6 +1391,15 @@ cond("SELFTESTFAST: FM.selftest names the fast subset and the full set; the CI s
      any(r_['id'] == 'FM.selftest' and '--fast' in r_['rule'] and 'full set' in r_['rule'] for r_ in sp['framework_repo']['editing_rules']['must_state'])
      and 'size_budget' in sp['framework_repo']['self_tests']['ci']['steps'])
 cond("DESIGNINDEX: the generated design/INDEX.md is a generated file the bundles list names", 'design/INDEX.md' in open(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(D))), 'tools', 'bundles.yaml'), encoding='utf-8').read())
+
+# TESTGUARD (user 2026-11-26): gate_reason test_weakened, rv1.signals.test_weakened, stop.json testguard_blocked
+cond("TESTGUARD: gate_reason has test_weakened; rv1.signals.test_weakened and stop-state testguard_blocked defined",
+     'test_weakened' in GR and 'test_weakened' in S['review-report.schema.json']['properties']['rv1']['properties']['signals']['properties']
+     and 'testguard_blocked' in S['stop-state.schema.json']['properties'])
+x = copy.deepcopy(rep); x['rv1']['signals']['test_weakened'] = ["tests/test_a.py:4 skip_marker_added: @pytest.mark.skip"]
+chk("review-report: rv1.signals.test_weakened (TESTGUARD)", "review-report.schema.json", x, True)
+x['rv1']['signals']['test_weakened'] = [1]
+chk("review-report: rv1.signals.test_weakened items are strings", "review-report.schema.json", x, False)
 
 print('ALL', 'OK' if all(RESULTS) else 'PROBLEMS', sum(RESULTS), '/', len(RESULTS))
 sys.exit(0 if all(RESULTS) else 1)

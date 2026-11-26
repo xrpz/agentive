@@ -1,12 +1,18 @@
 #!/usr/bin/env python3
 # agentive-unit: rl.hooks
-# design: spec.stop_hook, spec.stop_conditions, spec.handoff, contracts[stop-state], contracts[verify-result], decisions.accepted[VERIFYTREE], decisions.accepted[HANDOFFFILL], decisions.accepted[OPENMARK], decisions.accepted[HANDOFFREPORT]
+# design: spec.stop_hook, spec.stop_conditions, spec.handoff, contracts[stop-state], contracts[verify-result], decisions.accepted[VERIFYTREE], decisions.accepted[HANDOFFFILL], decisions.accepted[OPENMARK], decisions.accepted[HANDOFFREPORT], decisions.accepted[TESTGUARD]
 """Stop hook (Claude Code and Codex): run inner verify and decide DONE / PENDING / NO-PROGRESS / CAP / block.
 
 1. stop.json handoff_requested (this Stop follows the one NO-PROGRESS continuation): fill the handoff fields the agent left as a
    placeholder with `(script)` facts (HANDOFFFILL), clear it, exit 0, no rerun
 1b. no human present, branch spec/<slug>, docs/plans/<slug>/spec.md has an `- [OPEN]` bullet and the branch has no handoff:
    continue once (stop.json open_question_nudged) asking for handoff.sh; no rerun, no counter change (OPENMARK)
+1c. TESTGUARD: the uncommitted and unpushed diff (against the merge base with the upstream) deletes tests, removes test cases or assertions,
+   adds skip/only/xfail markers, deselects tests in the runner config or lowers a coverage threshold (lib/agentive/testguard.py, the detector
+   RV1 runs in CI): block once per distinct set of facts (stop.json testguard_blocked, at most TESTGUARD_MAX_BLOCKS a session) with the
+   facts as `path:line kind: detail` and NEXT = restore the tests, or state why each is intended; no human present: the reason goes
+   in the PR body. No finding: nothing is printed. No rerun, no counter change; stop_hook_active is not the exit condition (a continuation
+   after a failing verify is exactly when a test gets weakened); the fingerprint memory and the block cap are the loop guard
 2. the work content tree (hookio.content_tree: tracked files as on disk, untracked not ignored; no commit sha, so a commit
    alone changes nothing) equal to verify.json content_tree with the same verb commands (verb.fresh_for, VERIFYTREE):
    2a. last verify green: exit 0, no rerun ("DONE (unchanged)")
@@ -34,9 +40,12 @@ import sys
 
 sys.dont_write_bytecode = True  # no __pycache__ in the user's repo (V1-08)
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "lib"))
-from agentive import common, handoff, hookio, nohuman, state, verb  # noqa: E402
+from agentive import common, handoff, hookio, nohuman, state, testguard, verb  # noqa: E402
 
 PENDING_CHECKS = ("lint", "typecheck", "test", "build")   # the verbs a project can require (review.pipeline.stages.RV1.require_checks)
+
+TESTGUARD_MAX_BLOCKS = 3   # a session never blocks more than this many times on test weakening [design judgment]
+TESTGUARD_SHOW = 10        # facts named in the block message
 
 PENDING_MSG = "PENDING: no stack evidence yet; scaffold the project, then run /agentive:update"
 
@@ -96,6 +105,32 @@ def handoff_report(root, s, inp):
     return handoff.report_line(os.path.relpath(path, root).replace(os.sep, "/"), doc)
 
 
+def testguard_text(root, s, inp):
+    """TESTGUARD: the block message when the local diff weakens tests and this exact set of facts has not blocked yet; else None.
+    Never raises (a failing detector must not stop the hook)."""
+    try:
+        from agentive.review import rv1
+        manifest = hookio.load_manifest(root) or {}
+        globs = rv1.test_globs_for(manifest)
+        findings = testguard.detect_local(root, lambda p: rv1.is_test(p, globs))
+    except Exception:       # noqa: BLE001
+        return None
+    if not findings:
+        return None
+    fp = testguard.fingerprint(findings)
+    seen = list(s.get("testguard_blocked") or [])
+    if fp in seen or len(seen) >= TESTGUARD_MAX_BLOCKS:
+        return None
+    s["testguard_blocked"] = (seen + [fp])[-20:]
+    facts = [testguard.text(f) for f in findings]
+    shown = "; ".join(facts[:TESTGUARD_SHOW]) + (f"; ... and {len(facts) - TESTGUARD_SHOW} more" if len(facts) > TESTGUARD_SHOW else "")
+    way = ("no human is present: if a change is intended, write why each one is intended in the PR body (/pr), where the review lists these facts "
+           "and sends the PR to a human") if nohuman.no_human(hook_input=inp) else \
+          "if a change is intended, state in your final answer why each one is intended, so the human sees it"
+    return (f"TEST_WEAKENED: the diff against the merge base weakens tests ({testguard.summary(findings)}): {shown}. "
+            f"NEXT=restore the tests; {way}. This Stop is blocked once for these facts")
+
+
 def _finish(tool, msg, line=None):
     if tool == "claude":
         hookio.emit({"systemMessage": (line + "\n" + msg) if line else msg})
@@ -128,6 +163,14 @@ def main(argv):
         else:
             hookio.emit({"hookSpecificOutput": {"hookEventName": "Stop", "additionalContext": nudge}})
         return 0
+    tg = testguard_text(root, s, inp)
+    if tg:
+        state.save_stop(root, s)
+        if tool == "codex":
+            hookio.emit({"decision": "block", "reason": tg})
+            return 0
+        sys.stderr.write(tg + "\n")
+        return 2
     sc = manifest.get("stop_conditions") or {}
     max_blocks = int(sc.get("max_blocks") or 8)
     rounds = int(sc.get("no_progress_rounds") or 2)

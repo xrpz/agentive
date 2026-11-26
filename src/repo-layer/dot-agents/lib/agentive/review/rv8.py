@@ -111,8 +111,8 @@ def decide(inp):
         for r in rv4_reasons:
             if r in ("U2.non_interactive", "chain_approval", "always_human", "llm_raise", "trust_boundary"):
                 add(r)
-            elif r == "dependency_change":          # DEPHUMAN: the code with its one-line cause (what changed, the rule)
-                add(r, next((x.split(": ", 1)[1] for x in rv4_reasons if x.startswith("dependency_change: ")), None))
+            elif r in ("dependency_change", "test_weakened"):     # the code with its one-line cause (DEPHUMAN, TESTGUARD)
+                add(r, next((x.split(": ", 1)[1] for x in rv4_reasons if x.startswith(r + ": ")), None))
     if (inp.get("rv2") or {}).get("hits"):
         human = True
         add("trust_boundary")

@@ -462,6 +462,31 @@ Details: docs/impl/D.md §3 items 17-21, docs/impl/B.md §4 items 16-17.
 - Tests: `tests/review/test_sampling_audit.py` (draw, rates 0 and 1, tier weighting, base-read config, audit content, labels, no
   merge without a record, kill switch feed), `tests/design/validate_schemas.py` (schemas), `tests/engine/test_engine.py` (report line).
 
+### Weakened-test detector (TESTGUARD, 2026-11-26) [설계 판단 for every detail below; the feature itself is the user's decision]
+
+- One module, `lib/agentive/testguard.py`, two callers: the Stop hook (`detect_local`: working tree against `merge-base(HEAD, upstream)`, else
+  origin/HEAD, origin/main, origin/master, main, master, else HEAD) and RV1 (`detect_diff` over the PR diff, `signals.test_weakened`).
+  RV1's old test-only-deletion test is now its `deleted_test_file` fact (`signals.test_only_deletion` and the `gate_only` code stay for
+  earlier reports); `rv1._stem` delegates to `testguard.stem`.
+- Name patterns only, by extension: py `def test*` (class-qualified), js/ts `it|test(...)` (also xit, fit, .each), go `func Test*` and
+  `t.Run("name")`, java/kotlin `@Test|@ParameterizedTest|...` plus the next `void|fun`, rust `#[test]|#[tokio::test]|...` plus the next `fn`
+  (every `.rs` file is read: Rust tests live in src). Duplicate names count by occurrence (`name#2`).
+- A removed test is not reported when its body (first line stripped of the test name) reappears in a test that is new in some changed
+  file (a rename or a move); an `R` status compares with the old path. A Go parent whose subtest is gone is not also reported as
+  `assertions_dropped`. Assertions are counted per test by line regex; a count drop is a fact, not a verdict (a helper extraction reads
+  as a drop: accepted false positive).
+- Config and coverage: only lines the base did not have are checked (multiset of stripped lines); comments are skipped; a threshold key
+  that disappears or is lowered is `coverage_lowered` (a raised one is silent).
+- Thresholds: 3 Stop blocks a session, 100 facts in `signals.test_weakened` (the last item says how many more), 400 test/config files read.
+  `stop_hook_active` is not the exit condition (a continuation after a failing verify is when a test gets weakened); the loop guard is
+  `stop.json testguard_blocked` (fingerprints of fact sets) plus the cap. A detector failure never fails the hook.
+- CI: RV2 adds `("test_weakened", "<n> test-weakening fact(s) in the diff: <first fact> ...")`, RV4 `rules_tier` makes it tier 2, RV8 keeps
+  the code (human_required), `post.py` writes one Why sentence, the verdict "needs a human review — tests weakened" and the facts in Details.
+- Codex: `.codex/hooks.json` already runs `stop-verify.py --tool codex` at Stop, so Codex gets the local check as a decision block; CI
+  covers both tools. Not detected (named in the decision): a test that repeats the implementation, a green suite with wrong behavior.
+- Tests: `tests/review/test_testguard.py` (per language, clean diff, rename, config, coverage, RV1 to RV8 and comment),
+  `tests/hooks/test_testguard_stop.py` (block once, silence, `stop_hook_active`, cap, Codex, no human, unpushed commits, no git).
+
 ## 9. Open issues (verify before relying on them)
 
 1. Resolved 2026-10-28: Claude plugin skills reach the shared payload as `${CLAUDE_PLUGIN_ROOT}/payload`; the plugin

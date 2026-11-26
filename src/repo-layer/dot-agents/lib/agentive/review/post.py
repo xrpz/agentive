@@ -349,6 +349,11 @@ def why_items(report, extras=None, reasons=None):
         else:
             add("G6", d, ["dependency_change"])
         break
+    # ---- G6 tests weakened (TESTGUARD): the sentence here, the facts with file:line in Details
+    for d in _details(allr, "test_weakened"):
+        add("G6", "Tests may have been weakened: the diff deletes tests, removes test cases or assertions, adds a skip or only marker, "
+                  "deselects tests in the runner config, or lowers a coverage threshold (facts in Details).", ["test_weakened"])
+        break
     # ---- always_human details (G1 env vars, G4 size, G11, G12 and the rest)
     env = (rv1.get("signals") or {}).get("env_vars_changed") or []
     env_done, later = False, []
@@ -499,6 +504,9 @@ def verdict(report, items, extras=None):
     if "ai_review_missing" in codes:
         return ("warn", "needs a human review — AI review failed",
                 "Maintainer: open the failed ai-review job, fix the cause, and re-run it (or push a new commit).")
+    if "test_weakened" in codes:
+        return ("warn", "needs a human review — tests weakened",
+                "Check the test changes listed in Details: the author restores the tests or explains in the PR why each change is intended.")
     if "dependency_change" in codes:
         from . import rv1 as rv1mod
         return ("warn", "needs a human review — dependency change",
@@ -603,6 +611,10 @@ def detail_lines(report, extras=None, reasons=None, overflow=(), notes=(), final
     env = (rv1.get("signals") or {}).get("env_vars_changed") or []
     if env:
         out.append(f"- Environment variables added or removed ({len(env)}): " + ", ".join(f"`{e}`" for e in env))
+    tw = (rv1.get("signals") or {}).get("test_weakened") or []
+    if "test_weakened" in codes and tw:
+        out.append(f"- Test changes that may weaken the tests ({len(tw)}): " + " · ".join(f"`{x}`" for x in tw[:20])
+                   + (f" · … {len(tw) - 20} more in the review report" if len(tw) > 20 else ""))
     dc = (rv1.get("signals") or {}).get("dependency_changes") or {}
     if "dependency_change" in codes:        # E2E-31: the reason sentence is in Why only; Details holds the full lists, no sentence
         parts = [f"{label} " + ", ".join(f"`{x}`" for x in items) for label, items in (

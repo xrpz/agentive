@@ -4,7 +4,7 @@
 Index of the decision register in `design/framework.yaml` (`decisions.*`). Each id is stable and never reused.
 Read the full entry with `python3 tools/design.py get decisions.accepted[<ID>]` (line numbers: `design/INDEX.md`); the map page is `docs/map/index.html`.
 
-## Accepted design decisions (110)
+## Accepted design decisions (111)
 
 | id | title | decided_at | revised_at | spec_ref |
 |---|---|---|---|---|
@@ -118,6 +118,7 @@ Read the full entry with `python3 tools/design.py get decisions.accepted[<ID>]` 
 | EXPLAINOPT | an uncertain local tier makes the Explainer optional: only a predicted tier 2 requires it, and CI stays authoritative (E2E-65) | 2026-11-03 |  | ['spec.work_loop.pr_explainer', 'spec.work_loop.pr_skill', 'decisions.accepted[EXPLAIN]', 'decisions.accepted[LOCALTIER]'] |
 | TRUSTBASE | the AI review step reads instructions, agents, skills and settings from the base commit, never from the PR that changes them (B5) | 2026-11-26 |  | ['spec.review_pipeline.gate_protection', 'spec.review_pipeline.stages[RV2].protected_check_config', 'spec.work_loop.ci_ai_review_floor', 'decisions.accepted[CISPLIT]', 'decisions.accepted[WFCHANGE]', 'decisions.accepted[SECPATHS]'] |
 | SAMPAUDIT | a risk-weighted share of the automated approvals goes to a human before the merge, and every automated approval decision leaves an audit record (item 1; revises the removed U1.b) | 2026-11-26 |  | ['spec.review_pipeline.auto_merge_policy.conditions[U1.e]', 'spec.review_pipeline.stages[RV8]', 'decisions.accepted[DEFAULTS]', 'decisions.removed[U1.b]', 'contracts[review-report]', 'contracts[pr-body-agentive-review]', 'contracts[project-config]'] |
+| TESTGUARD | weakened tests are detected by code, locally at Stop and in CI, and sent to a human (item B1) | 2026-11-26 |  | ['spec.stop_hook', 'spec.review_pipeline.stages[RV1]', 'spec.review_pipeline.stages[RV2]', 'spec.review_pipeline.stages[RV8]', 'contracts[stop-state]', 'contracts[review-report]'] |
 
 ## Decided user choices (U items) (5)
 

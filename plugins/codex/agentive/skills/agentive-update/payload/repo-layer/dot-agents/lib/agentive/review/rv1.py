@@ -33,6 +33,7 @@ import os
 import posixpath
 import re
 
+from .. import testguard
 from . import config as cfgmod
 from . import gitio
 from . import util
@@ -40,6 +41,7 @@ from . import util
 LOCKFILES = {"package-lock.json", "npm-shrinkwrap.json", "yarn.lock", "pnpm-lock.yaml", "bun.lockb", "bun.lock",
              "poetry.lock", "Pipfile.lock", "uv.lock", "pdm.lock", "go.sum", "Cargo.lock", "Gemfile.lock",
              "composer.lock", "gradle.lockfile", "packages.lock.json", "mix.lock", "pubspec.lock", "flake.lock"}
+TEST_WEAKENED_CAP = 100      # facts listed in signals.test_weakened [design judgment]
 TEST_GLOBS = ["**/test_*.py", "**/*_test.py", "**/tests/**", "**/test/**", "**/__tests__/**", "**/*_test.go",
               "**/*.test.*", "**/*.spec.*", "**/*Test.java", "**/*Tests.java", "**/*IT.java", "**/*Test.kt",
               "**/src/test/**", "**/spec/**", "**/conftest.py"]
@@ -562,10 +564,12 @@ def signals(diff, statuses, hunks, manifest, shared_globs, test_globs, history_r
             if st == "D" and util.first_match(pub, p):
                 breaking = True
         s["public_api_change"] = "breaking" if breaking else "none"
-    # test-only deletion: deleted tests whose production code remains
-    del_tests = [p for p in deleted if is_test(p, test_globs)]
-    prod_deleted = {_stem(p) for p in deleted if not is_test(p, test_globs)}
-    s["test_only_deletion"] = any(_stem(p) not in prod_deleted for p in del_tests)
+    # TESTGUARD: the shared detector (the local Stop hook runs the same code); the old test-only deletion rule is its
+    # deleted_test_file fact, so there is one rule, not two
+    tw = testguard.detect(statuses, diff.show_base, diff.show_head, lambda p: is_test(p, test_globs))
+    s["test_only_deletion"] = any(f["kind"] == "deleted_test_file" for f in tw)
+    s["test_weakened"] = [testguard.text(f) for f in tw][:TEST_WEAKENED_CAP] + (
+        [f"... and {len(tw) - TEST_WEAKENED_CAP} more"] if len(tw) > TEST_WEAKENED_CAP else [])
     # inline suppressions added
     sup = []
     for p in changed:
@@ -636,10 +640,7 @@ def signals(diff, statuses, hunks, manifest, shared_globs, test_globs, history_r
 
 
 def _stem(path):
-    b = posixpath.basename(path)
-    b = re.sub(r"\.(test|spec)(?=\.)", "", b)
-    b = re.sub(r"^test_|_test(?=\.)|(Test|Tests|IT)(?=\.)", "", b)
-    return b.split(".")[0].lower()
+    return testguard.stem(path)
 
 
 # ---------------------------------------------------------------- coverage (gate-only condition)

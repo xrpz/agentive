@@ -198,6 +198,12 @@ def run(diff, statuses, hunks, rules, manifest, signals, pr=None, checks=None, r
         dc = rv1mod.dependency_changes(diff, statuses)
     if rv1mod.is_dependency_change(dc):
         always.append(("dependency_change", rv1mod.dependency_change_text(dc, dep if pr is not None else "no_ci")))
+    # TESTGUARD (user 2026-11-26): a deleted or weakened test, a skip marker, a deselecting test-runner setting or a lowered
+    # coverage threshold is tier 2 in every profile: the facts are in rv1.signals.test_weakened, the reason names the count
+    tw = [x for x in (signals.get("test_weakened") or []) if not x.startswith("... and ")]
+    if tw:
+        always.append(("test_weakened", f"{len(signals['test_weakened'])} test-weakening fact(s) in the diff: {tw[0]}"
+                                        + (f" (and {len(tw) - 1} more, see Details)" if len(tw) > 1 else "")))
     if any(h["reason"] == "check_config" for h in hits):
         always.append(("always_human", "gate or agent config change (protected_check_config)"))
     if len(changed) > 100:

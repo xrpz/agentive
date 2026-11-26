@@ -54,6 +54,14 @@
       "default": false,
       "description": "set when the Stop hook asked once, with no human present, for the open_question handoff of a spec/<slug> branch whose spec.md has an [OPEN] bullet (decisions.accepted[OPENMARK]); a new start resets it"
     },
+    "testguard_blocked": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "maxItems": 20,
+      "description": "fingerprints (sha256 prefix) of the sets of test-weakening facts the Stop hook already blocked on in this session (decisions.accepted[TESTGUARD]); the same facts never block twice, and at most 3 blocks a session; a new start resets it"
+    },
     "failure_window": {
       "type": "array",
       "items": {
