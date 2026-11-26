@@ -16,7 +16,9 @@
       RV8 for the required check agentive-review-gate: recomputes every deterministic stage from the base commit,
       reads the LLM outputs of the ai-review work directory (fail-safe when missing), decides, and with --apply
       writes agentive-review.pipeline into the PR body, labels PRs that review.auto_merge did not merge but would have
-      (agentive:shadow-auto-merge), opens demotion issues, enables auto-merge.
+      (agentive:shadow-auto-merge), opens demotion issues, enables auto-merge. SAMPAUDIT: a share of the PRs it would merge by
+      itself is sent to a human first (label agentive:sampled-for-review), and every automated approval decision leaves the label
+      agentive:auto-approved and an `<!-- agentive-audit {json} -->` block in the summary comment (no merge without that record).
   agentive-review independence <pr> [--work D]      CI job agentive-independence (enforced in CI: a review of the ai-review job for
       the PR head sha; bot PRs and human PRs without an agentive-review block are exempt and go to a human)
   agentive-review outputs-hash --work D [--expect H]  sha256 of the LLM task outputs; --expect drops them on a mismatch
@@ -57,7 +59,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "..", "lib"))
 try:
     from agentive import common, hookio, verb as verbmod   # noqa: E402
-    from agentive.review import (attest, config as cfgmod, evals, findings as fmod, github as gh, gitio, independence,  # noqa: E402
+    from agentive.review import (attest, audit, config as cfgmod, evals, findings as fmod, github as gh, gitio, independence,  # noqa: E402
                                  killswitch, llmstate, pipeline, post, pr_body, rv1 as rv1mod, rv2 as rv2mod, util)
 except ImportError as e:                               # pragma: no cover
     print(f"AGENTIVE_FAIL verb=review exit=2 log=-; NEXT=install python3 >= 3.13 and keep .agents/lib/agentive ({e})")
@@ -324,7 +326,8 @@ def body_pipeline(report, artifact_ref=None):
                               for f in report.get("findings") or []],
         "risk_score": {k: v for k, v in report["rv7b"].items() if k in ("score", "reason", "preset", "human_if_score_gt", "config_sha256")},
         "gate": {"decision": rv8["decision"], "check": "agentive-review-gate", "auto_merge": rv8["auto_merge"],
-                 "demoted": bool(rv8.get("demoted")), "would_auto_merge": bool(rv8.get("would_auto_merge")), "head_sha": rv8["head_sha"]},
+                 "demoted": bool(rv8.get("demoted")), "would_auto_merge": bool(rv8.get("would_auto_merge")), "head_sha": rv8["head_sha"],
+                 "sampled": bool((rv8.get("sampled") or {}).get("selected"))},
     }
     if artifact_ref:
         pipe["gate"]["report_ref"] = artifact_ref
@@ -516,7 +519,8 @@ def cmd_gate(a):
         print(f"::notice title=agentive AI review skipped::{skip['detail']}. NEXT: {skip['next']}")
     # E2E-45: ONE view of this decision for the step summary and the sticky summary comment (the ai-review job wrote the comment
     # before the gate decided; _apply posts it again from this decision, so the comment never states a conclusion the check lacks)
-    view = {"ai_review_skipped": skip, "llm_problems": extras.get("llm_problems"),
+    view = {"gate_version": ((cfgmod.load_manifest(ctx.policy).value.get("framework") or {}).get("version") or "unknown"),
+            "ai_review_skipped": skip, "llm_problems": extras.get("llm_problems"),
             "ai_step_failed": llmstate.failure_text(failed, llmstate.run_url()) if failed else None}
     if os.environ.get("GITHUB_STEP_SUMMARY"):
         # COMMENTUX: the step summary is markdown for a human (verdict, What to do, Why, Checks, folded codes); the job log
@@ -557,7 +561,12 @@ def _kill_switch(repo, slug, pr, tier):
     subprocess.run(["git", "-C", repo, "fetch", "--no-tags", "--quiet", "origin", pr["base_ref"]], capture_output=True)
     reverts = gitio.log_messages(repo, ref if gitio.ok(repo, "rev-parse", "--verify", ref) else pr["base_sha"], int(since.timestamp()))
     merged += _older_targets(slug, merged, reverts)
-    return killswitch.evaluate(tier, pr["author"], now, merged, reverts, issues)
+    try:     # SAMPAUDIT: PRs a human labeled agentive:sample-found-bad count like a revert
+        flagged = gh.flagged_prs(slug, killswitch.SAMPLE_BAD_LABEL, since.strftime("%Y-%m-%dT%H:%M:%SZ"))
+    except gh.GhError as e:
+        flagged = []
+        print(f"note: kill switch: could not read the PRs labeled {killswitch.SAMPLE_BAD_LABEL} ({e})")
+    return killswitch.evaluate(tier, pr["author"], now, merged, reverts, issues, flagged)
 
 
 def _older_targets(slug, merged, reverts, cap=20):
@@ -608,9 +617,17 @@ def _apply(slug, pr, rep, extras, work):
             gh.patch_pr_body(slug, pr["number"], new_body)     # GITHUB_TOKEN edits start no workflow run [S39]
     except gh.GhError as e:
         print(f"note: could not update the PR body: {e}")
+    # SAMPAUDIT: the audit record of an automated approval decision goes into the sticky comment (bot-written, last line); when
+    # that write fails the gate does not enable auto-merge (no record, no automated merge) and a human merges
+    import datetime
+    rec = audit.record(rep, ci_reviews(extras), extras.get("gate_version"), run_url,
+                       datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"))
+    extras = dict(extras, audit=rec)
+    audit_failed = False
     try:     # E2E-45: the sticky summary comment states the final decision of this gate run
         gh.upsert_issue_comment(slug, pr["number"], post.SUMMARY_MARKER, post.summary_comment(rep, 0, extras))
     except gh.GhError as e:
+        audit_failed = bool(rec)
         print(f"note: could not update the summary comment: {e}")
     ks = extras.get("kill_switch_result") or {}
     try:
@@ -622,7 +639,15 @@ def _apply(slug, pr, rep, extras, work):
             gh.add_labels(slug, pr["number"], [cfgmod.AUTO_MERGE_LABEL])
         elif cfgmod.AUTO_MERGE_LABEL in (pr.get("labels") or []):
             gh.remove_label(slug, pr["number"], cfgmod.AUTO_MERGE_LABEL)     # a new head no longer qualifies: the label is stale
-        if rv8["auto_merge"]:
+        want, drop = audit.labels_for(rv8)                                  # SAMPAUDIT: agentive:auto-approved, agentive:sampled-for-review
+        if want:
+            gh.add_labels(slug, pr["number"], want)
+        for lb in drop:
+            if lb in (pr.get("labels") or []):
+                gh.remove_label(slug, pr["number"], lb)
+        if rv8["auto_merge"] and audit_failed:
+            print(f"::warning title=agentive auto-merge not enabled::the audit record could not be written to the summary comment, so no automated merge: a human merges this PR")
+        elif rv8["auto_merge"]:
             gh.enable_auto_merge(slug, pr["number"])
     except gh.GhError as e:
         print(f"note: gate side effect failed: {e}")

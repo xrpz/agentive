@@ -1,5 +1,5 @@
 # agentive-unit: lib.agentive
-# design: decisions.accepted[DEFAULTS], decisions.accepted[PENDINGNOTICE], decisions.accepted[EFFECTIVECHECKS], spec.review_pipeline.config, contracts[project-config] (owner D)
+# design: decisions.accepted[DEFAULTS], decisions.accepted[PENDINGNOTICE], decisions.accepted[EFFECTIVECHECKS], decisions.accepted[SAMPAUDIT], spec.review_pipeline.config, contracts[project-config] (owner D)
 """`agentive-lint settings --effective`: the settings that are in force, where each value comes from and, for auto-merge,
 why it is not available. Defaults live in framework code; .agents/framework.yaml holds the user's overrides only (DEFAULTS).
 Pure text from a policy tree: source(path) -> text | None (the working tree for the command, the base commit in CI)."""
@@ -34,6 +34,12 @@ def effective(source):
     out.append("  values: " + " | ".join(cfgmod.AUTO_MERGE_VALUES) + f" (default {cfgmod.AUTO_MERGE_DEFAULT}); change it by telling your agent "
                "or editing .agents/framework.yaml (a review config change: a human confirms the commit)")
     for p in am.problems:
+        out.append(f"  problem: {p}")
+    sm = cfgmod.load_sampling(source)
+    out.append(f"review.sampling: tier0 {sm.value['tier0']:g}, tier1 {sm.value['tier1']:g}   [{sm.source}]")
+    out.append("  share of the PRs the gate would merge by itself that a human reviews first (label " + cfgmod.SAMPLED_LABEL + "); "
+               "0 = never, 1 = every PR of the tier; find them: " + cfgmod.FIND_SAMPLED_CMD)
+    for p in sm.problems:
         out.append(f"  problem: {p}")
     rs = cfgmod.required_state_of(manifest, conf_l)
     pend = rs["pending_required"]

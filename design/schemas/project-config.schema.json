@@ -28,6 +28,25 @@
           ],
           "default": "low_risk",
           "description": "DEFAULTS (user 2026-10-29, V1-18): whether the review gate merges pull requests automatically. The default lives in framework code, not in this file: a key that is absent means low_risk, the original U1=C behaviour (tier 0 on, tier 1 shadow). off: nothing is merged and nothing is labeled, a human merges every PR. dry_run: nothing is merged; a PR (tier 0 included) that would have been merged gets the label agentive:shadow-auto-merge. low_risk (default): tier 0 PRs (mechanically verified changes: docs, formatting and the classes the project adds) are merged automatically; tier 1 runs in shadow mode: a tier 1 PR that would qualify gets the label agentive:shadow-auto-merge and a human merges it. low_and_medium_risk: tier 0 and tier 1 PRs are merged automatically (tier 1 only with a rubric score at or below the threshold). Tier 2 PRs are always merged by a human. The kill switch (2 reverts or hotfixes within 7 days, per tier and source) and every gate condition apply to every value. A merge also needs the GitHub repository setting 'Allow auto-merge' and branch protection that requires agentive-review-gate. An unknown value counts as off. A change to this key is a review_config change: a human confirms it before commit, and a run with no human present opens a PR only. Show the value in force and why it is unavailable: .agents/bin/agentive-lint settings --effective"
+        },
+        "sampling": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "SAMPAUDIT (user 2026-11-26, revising the removed U1.b): the share of PRs the gate would merge by itself that goes to a human first, per tier (risk weighted: tier 1 more than tier 0). The defaults live in framework code (tier0 0.05, tier1 0.2) and this file holds overrides only. 0 never samples that tier, 1 samples every PR of it (a human then merges every PR of the tier). The draw is deterministic (sha256 of repository id and PR number) and the rates are read from the base commit, so a PR cannot change the rate it is drawn against. A change to this key is a review_config change: a human confirms it before commit. Only PRs the setting review.auto_merge would merge are drawn: with the default low_risk that is tier 0 only",
+          "properties": {
+            "tier0": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1,
+              "default": 0.05
+            },
+            "tier1": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1,
+              "default": 0.2
+            }
+          }
         }
       }
     }

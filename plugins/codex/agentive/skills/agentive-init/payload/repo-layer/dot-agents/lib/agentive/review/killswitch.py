@@ -7,6 +7,9 @@ revert   a default-branch commit whose message contains 'This reverts <full sha>
 hotfix   a merged PR whose agentive-review.hotfix_of names the PR
 source   the PR author login [design judgment]
 auto-merged PR = its body block records pipeline.gate.auto_merge true and pipeline.tier.value = the tier.
+sample found bad (SAMPAUDIT): a PR the gate drew for human review (body block pipeline.gate.sampled true, pipeline.tier.value = the
+tier) that a human labeled agentive:sample-found-bad counts like a revert: the automated approval was wrong. It counts once per PR,
+by the PR's last update inside the window [design judgment: the label time is not read].
 Only events after the latest close time of a demotion issue for the same scope count [design judgment: K6].
 The demotion issue carries `<!-- agentive-demotion: tier=<t> source=<login> -->` [design judgment: scope marker].
 """
@@ -19,6 +22,7 @@ from . import util
 COUNT = 2
 WINDOW_DAYS = 7
 LABEL = "agentive:auto-merge-demoted"
+SAMPLE_BAD_LABEL = "agentive:sample-found-bad"
 SCOPE_RE = re.compile(r"<!--\s*agentive-demotion:\s*tier=(\d)\s+source=(\S+?)\s*-->")
 REVERT_RE = re.compile(r"This reverts (?:commit )?([0-9a-f]{40})")
 
@@ -40,12 +44,21 @@ def auto_merged_tier(body):
     return None
 
 
-def evaluate(tier, source, now, merged_prs, revert_commits, demotion_issues):
+def sampled_tier(body):
+    blk, _ = pr_body.block(body)
+    pipe = (blk or {}).get("pipeline") or {}
+    if (pipe.get("gate") or {}).get("sampled") is True:
+        return (pipe.get("tier") or {}).get("value")
+    return None
+
+
+def evaluate(tier, source, now, merged_prs, revert_commits, demotion_issues, flagged=None):
     """{count, prs, demoted, open_issue: bool, since}.
 
     merged_prs: [{number, author, merged_at, merge_commit_sha, body}] (recently merged PRs of the repo)
     revert_commits: [(sha, unix_time, message)] on the default branch within the window
-    demotion_issues: [{number, state, closed_at, body}] labeled agentive:auto-merge-demoted"""
+    demotion_issues: [{number, state, closed_at, body}] labeled agentive:auto-merge-demoted
+    flagged: [{number, author, updated_at, body}] PRs labeled agentive:sample-found-bad (SAMPAUDIT)"""
     scope = (tier, source)
     open_now = any(i.get("state") == "open" and _scope(i) == scope for i in demotion_issues)
     closed = [util.parse_time(i["closed_at"]) for i in demotion_issues
@@ -73,6 +86,9 @@ def evaluate(tier, source, now, merged_prs, revert_commits, demotion_issues):
         hf = (blk or {}).get("hotfix_of")
         if isinstance(hf, int) and hf in nums and p.get("merged_at") and util.parse_time(p["merged_at"]) > since:
             hit.add(hf)
+    for p in flagged or []:
+        if p.get("author") == source and sampled_tier(p.get("body")) == tier and p.get("updated_at") and util.parse_time(p["updated_at"]) > since:
+            hit.add(p["number"])
     count = len(hit)
     return {"count": count, "prs": sorted(hit), "demoted": open_now or count >= COUNT,
             "open_issue": (not open_now) and count >= COUNT, "since": since.strftime("%Y-%m-%dT%H:%M:%SZ")}
@@ -81,8 +97,8 @@ def evaluate(tier, source, now, merged_prs, revert_commits, demotion_issues):
 def issue_text(tier, source, count, prs):
     title = f"agentive: auto-merge demoted for tier {tier}, source {source}"
     body = (f"{scope_marker(tier, source)}\n"
-            f"The kill switch (U1.c) counted {count} auto-merged PRs of tier {tier} by {source} that were reverted or "
-            f"hotfixed within {WINDOW_DAYS} days: {', '.join('#' + str(n) for n in sorted(prs)) or '-'}.\n\n"
-            f"Auto-merge is stopped for this tier and source only. Close this issue to re-enable it; only reverts and "
-            f"hotfixes after the close time count again.")
+            f"The kill switch (U1.c) counted {count} PRs of tier {tier} by {source}: auto-merged and reverted or "
+            f"hotfixed within {WINDOW_DAYS} days, or drawn for a human sample and found bad there: {', '.join('#' + str(n) for n in sorted(prs)) or '-'}.\n\n"
+            f"Auto-merge is stopped for this tier and source only. Close this issue to re-enable it; only reverts, "
+            f"hotfixes and sample findings after the close time count again.")
     return title, body

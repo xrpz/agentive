@@ -1615,6 +1615,13 @@ class Engine:
                  f"{CONFIG} ({' | '.join(reviewcfg.AUTO_MERGE_VALUES)}); a human confirms that commit. Merging needs the GitHub repository setting "
                  "'Allow auto-merge' (Settings > General > Pull Requests) and branch protection that requires agentive-review-gate. "
                  "Show the settings in force: .agents/bin/agentive-lint settings --effective")
+        sm = reviewcfg.load_sampling(lambda rel: read_text(self.p(rel)) if os.path.isfile(self.p(rel)) else None)
+        self.out(f"AGENTIVE_REPORT audit: every automated approval gets the label {reviewcfg.APPROVED_LABEL} and a machine-readable audit block in the "
+                 f"agentive-review summary comment (tier, classes, rubric items, trust-boundary result, reviewer verdicts, head sha, gate version). "
+                 f"A human check of a share of them is built in: review.sampling tier0 {sm.value['tier0']:g}, tier1 {sm.value['tier1']:g} "
+                 f"(.agents/framework.yaml overrides; 0 = never, 1 = every PR of the tier). Find the PRs to review: "
+                 f"{reviewcfg.FIND_SAMPLED_CMD} ; the approvals made so far: {reviewcfg.FIND_APPROVED_CMD} ; one approval's audit block: {reviewcfg.READ_AUDIT_CMD} . "
+                 f"A sampled PR a human finds wrong gets the label {reviewcfg.SAMPLE_BAD_LABEL}: the kill switch counts it like a revert, then run /distill")
         for ln in getattr(self, "rubric_lines", []):
             self.out(ln)
         rep = [

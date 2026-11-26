@@ -129,6 +129,15 @@ def demotion_issues(slug, label):
             if "pull_request" not in i]
 
 
+def flagged_prs(slug, label, since_iso):
+    """PRs (open, closed or merged) that carry `label` and were updated since since_iso: [{number, author, updated_at, body}]
+    (SAMPAUDIT: the PRs a human labeled agentive:sample-found-bad)."""
+    since = urllib.parse.quote(since_iso, safe="")
+    return [{"number": i["number"], "author": (i.get("user") or {}).get("login"), "updated_at": i.get("updated_at"), "body": i.get("body") or ""}
+            for i in api(f"repos/{slug}/issues?state=all&labels={urllib.parse.quote(label, safe='')}&since={since}&per_page=100", paginate=True) or []
+            if "pull_request" in i]
+
+
 def create_issue(slug, title, body, labels):
     return api(f"repos/{slug}/issues", "POST", {"title": title, "body": body, "labels": list(labels)})
 

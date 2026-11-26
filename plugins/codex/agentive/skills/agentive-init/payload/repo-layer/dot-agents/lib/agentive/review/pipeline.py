@@ -22,6 +22,7 @@ from . import rv3 as rv3mod
 from . import rv4 as rv4mod
 from . import rv7b as rv7bmod
 from . import rv8 as rv8mod
+from . import sampling as sampling_mod
 from . import tasks as tmod
 from . import util
 from .. import common
@@ -221,6 +222,8 @@ def run(ctx):
     # ---------------- RV7b
     am_l = cfgmod.load_auto_merge(ctx.policy)      # review.auto_merge, read from the policy tree (DEFAULTS)
     extras["problems"] = list(extras["problems"]) + am_l.problems
+    sm_l = cfgmod.load_sampling(ctx.policy)        # review.sampling, read from the policy tree (SAMPAUDIT)
+    extras["problems"] = list(extras["problems"]) + sm_l.problems
     tier1_mode = "on" if (conf_l.valid and am_l.value != "off") else "off"     # off: the RV7b score is not computed
     report["rv7b"] = rv7bmod.run(tier, tier1_mode, rubric_l, rv1["signals"], report["rv3"]["classes"], rv1["_changed_lines"])
     report["stages_run"].append("RV7b")
@@ -299,7 +302,9 @@ def run(ctx):
         "pending_verbs": rv1["signals"]["pending_verbs"], "require_explicit": bool(ctx.required_checks) or conf_l.require_explicit,
         "signals": rv1["signals"], "llm_problems": extras["llm_problems"],
         "head_sha": hsha, "trigger": ctx.trigger, "kill_switch": ctx.kill_switch, "source": (ctx.pr or {}).get("author"),
-        "exempt": exempt})
+        "exempt": exempt, "sampling": sm_l.value if ctx.profile == "ci" else None,
+        "sample_seed": sampling_mod.seed(os.environ.get("GITHUB_REPOSITORY_ID") or os.environ.get("GITHUB_REPOSITORY") or "",
+                                         (ctx.pr or {}).get("number"))})
     extras["kill_switch_result"] = rv8.pop("_kill_switch_result", None)
     if ctx.profile == "ci" and manifest_absent:
         # E2E-34 (first install, display only): the base has no agentive manifest, so the required checks above count every

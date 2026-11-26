@@ -1343,6 +1343,14 @@ class DefaultsTest(Base):
         self.assertIn("'Allow auto-merge'", line)
         self.assertIn("settings --effective", line)
         self.assertIn("a human confirms that commit", line)
+        audit = next(ln for ln in out.splitlines() if ln.startswith("AGENTIVE_REPORT audit:"))      # SAMPAUDIT: one documented gh command, not AGENTS.md
+        self.assertIn("agentive:auto-approved", audit)
+        self.assertIn("review.sampling tier0 0.05, tier1 0.2", audit)
+        self.assertIn("gh api \"repos/{owner}/{repo}/issues?labels=agentive:sampled-for-review&state=open\"", audit)
+        self.assertNotIn("gh pr ", audit)
+        self.assertIn("agentive:sample-found-bad", audit)
+        self.assertNotIn("agentive:sampled-for-review", self.read("AGENTS.md"))
+        self.assertNotIn("agentive:sampled-for-review", self.read("CLAUDE.md"))
 
     def test_e2e_19_init_reports_required_checks_and_not_required(self):
         """E2E-19 (EFFECTIVECHECKS): a pending verb of the default list is not required (info line), auto-merge stays available."""

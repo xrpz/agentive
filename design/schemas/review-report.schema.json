@@ -1296,6 +1296,38 @@
               }
             }
           ]
+        },
+        "sampled": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "selected",
+            "tier",
+            "rate",
+            "draw"
+          ],
+          "description": "SAMPAUDIT (decisions.accepted[SAMPAUDIT], user 2026-11-26, revising the removed U1.b): written only for a PR the gate would have merged by itself (review.auto_merge merges its tier). draw = first 8 bytes of sha256('<repository id>:<PR number>') as a number in [0, 1) (one number per PR, so a push never changes it); selected = draw < rate (rate 0 never, rate 1 always). A selected PR is human_required with reason sampled_for_review and the label agentive:sampled-for-review; a human reviews it before it merges. The rate comes from the base commit (review.sampling in .agents/framework.yaml, default tier0 0.05 and tier1 0.2)",
+          "properties": {
+            "selected": {
+              "type": "boolean"
+            },
+            "tier": {
+              "enum": [
+                0,
+                1
+              ]
+            },
+            "rate": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "draw": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            }
+          }
         }
       },
       "allOf": [
@@ -1437,6 +1469,35 @@
                 "contains": {
                   "const": "explainer_missing"
                 }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "sampled": {
+                "properties": {
+                  "selected": {
+                    "const": true
+                  }
+                },
+                "required": [
+                  "selected"
+                ]
+              }
+            },
+            "required": [
+              "sampled"
+            ]
+          },
+          "then": {
+            "properties": {
+              "auto_merge": {
+                "const": false
+              },
+              "decision": {
+                "const": "human_required"
               }
             }
           }
@@ -1901,6 +1962,7 @@
         "pending_verbs",
         "no_required_check",
         "would_auto_merge",
+        "sampled_for_review",
         "tier1_off",
         "rubric_invalid",
         "score_above_threshold",
@@ -1913,7 +1975,7 @@
         "ai_review_skipped",
         "ai_step_failed"
       ],
-      "description": "machine-readable reason codes of the RV8 decision (F-24, 2026-10-27): failing_required_check and unanswered_finding (block), U2.non_interactive (human_required, RV4.u2_non_interactive), explainer_missing and chain_order (block), tier2, trust_boundary (RV2 hit), always_human, chain_approval, llm_raise (RV4 raise-only check), critical_cve_unchecked (retired by DEPHUMAN, 2026-10-31: no longer written; kept so earlier reports validate), dependency_change (DEPHUMAN, E2E-20: the PR changes a dependency list or a lockfile; tier 2, human_required, with the one-line cause), inconclusive_finding, finding_disputed, review_rounds_exceeded, pending_verbs (human_required: a required check the user named in require_checks has no command, so auto-merge is unavailable until the command is given or the check is removed from require_checks, PENDINGNOTICE as revised by EFFECTIVECHECKS), no_required_check (E2E-19 floor: no required check has a command, so nothing was verified: human_required), would_auto_merge (review.auto_merge did not merge a PR that met every condition: label agentive:would-auto-merge), tier1_off, rubric_invalid, score_above_threshold, demoted (tier 1 or the kill switch keeps auto-merge off), gate_only (a gate-only condition), coverage_unavailable (the coverage gate was skipped), auto_merge_off (review.auto_merge is off). reasons[] stays free text for people; bot_pr_exempt and human_pr_exempt (V2-08, 2026-10-29): the PR is exempt from agentive-independence (a bot PR, or a human PR without an agentive-review block), is never auto-merged and goes to a human; ai_review_skipped (E2E-11, 2026-10-30): the Claude Code action skipped the AI review because the run's .github/workflows/agentive-review.yml differs from the default branch's copy (first install, workflow change, a base that differs from the default branch, an old merge commit) or the PR comes from a fork: human_required, never auto-merged; ai_step_failed (E2E-10b, 2026-10-30): the ai-review LLM step failed; the reason line carries only an allowlisted code (insufficient_credits, auth, rate_limit, timeout, context_too_long, max_turns, no_result, unclassified, codex_exit), a fixed sentence and the run URL, never the error text"
+      "description": "machine-readable reason codes of the RV8 decision (F-24, 2026-10-27): failing_required_check and unanswered_finding (block), U2.non_interactive (human_required, RV4.u2_non_interactive), explainer_missing and chain_order (block), tier2, trust_boundary (RV2 hit), always_human, chain_approval, llm_raise (RV4 raise-only check), critical_cve_unchecked (retired by DEPHUMAN, 2026-10-31: no longer written; kept so earlier reports validate), dependency_change (DEPHUMAN, E2E-20: the PR changes a dependency list or a lockfile; tier 2, human_required, with the one-line cause), inconclusive_finding, finding_disputed, review_rounds_exceeded, pending_verbs (human_required: a required check the user named in require_checks has no command, so auto-merge is unavailable until the command is given or the check is removed from require_checks, PENDINGNOTICE as revised by EFFECTIVECHECKS), no_required_check (E2E-19 floor: no required check has a command, so nothing was verified: human_required), would_auto_merge (review.auto_merge did not merge a PR that met every condition: label agentive:would-auto-merge), tier1_off, rubric_invalid, score_above_threshold, demoted (tier 1 or the kill switch keeps auto-merge off), gate_only (a gate-only condition), coverage_unavailable (the coverage gate was skipped), auto_merge_off (review.auto_merge is off). reasons[] stays free text for people; bot_pr_exempt and human_pr_exempt (V2-08, 2026-10-29): the PR is exempt from agentive-independence (a bot PR, or a human PR without an agentive-review block), is never auto-merged and goes to a human; ai_review_skipped (E2E-11, 2026-10-30): the Claude Code action skipped the AI review because the run's .github/workflows/agentive-review.yml differs from the default branch's copy (first install, workflow change, a base that differs from the default branch, an old merge commit) or the PR comes from a fork: human_required, never auto-merged; ai_step_failed (E2E-10b, 2026-10-30): the ai-review LLM step failed; the reason line carries only an allowlisted code (insufficient_credits, auth, rate_limit, timeout, context_too_long, max_turns, no_result, unclassified, codex_exit), a fixed sentence and the run URL, never the error text; sampled_for_review (SAMPAUDIT, user 2026-11-26): the PR met every condition for automatic merge and the deterministic draw selected it for human review first, label agentive:sampled-for-review: human_required, not merged by the gate"
     }
   },
   "allOf": [

@@ -446,6 +446,22 @@ Details: docs/impl/D.md §3 items 17-21, docs/impl/B.md §4 items 16-17.
   `**/AGENTS.override.md` and `.mcp.json`; the earlier root-only `.claude/**` and `.codex/**` entries became the `**/` form.
 - Test: `tests/review/test_trustbase.py` runs the rendered step against a throwaway git repo for both CI tools.
 
+### Sample and audit of automated approvals (SAMPAUDIT, 2026-11-26) [설계 판단 for every detail below; the feature itself is the user's decision]
+
+- Pre-merge sample, one draw per PR: `review/sampling.py` (sha256 of `<repository id>:<PR number>`, first 8 bytes / 2^64, selected when
+  below the tier's rate); rv8 draws only a PR it would merge by itself and answers `sampled_for_review` (human_required, no merge).
+  Defaults `tier0 0.05`, `tier1 0.2` (`config.SAMPLING_DEFAULT`), override `review.sampling` in `.agents/framework.yaml`, read from the
+  base commit; an invalid value falls back to the default and is a problem line, never a lower rate. The rates are conservative
+  starting values; no source names a rate.
+- Audit: `review/audit.py` builds the record from the final report; the gate writes it as the last line of the sticky summary comment
+  (`post.summary_comment`, only `final=True`) and labels agentive:auto-approved / agentive:sampled-for-review (stale ones removed).
+  A failed comment write skips `gh pr merge --auto` (`_apply`, `audit_failed`). The summary comment parser takes the last block, so
+  PR text that imitates a block is ignored.
+- Found bad: the label `agentive:sample-found-bad` feeds `killswitch.evaluate(..., flagged)` through `github.flagged_prs`; the PR body
+  block carries `pipeline.gate.sampled`. The label time is not read (the PR's `updated_at` is used).
+- Tests: `tests/review/test_sampling_audit.py` (draw, rates 0 and 1, tier weighting, base-read config, audit content, labels, no
+  merge without a record, kill switch feed), `tests/design/validate_schemas.py` (schemas), `tests/engine/test_engine.py` (report line).
+
 ## 9. Open issues (verify before relying on them)
 
 1. Resolved 2026-10-28: Claude plugin skills reach the shared payload as `${CLAUDE_PLUGIN_ROOT}/payload`; the plugin

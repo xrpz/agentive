@@ -670,6 +670,55 @@ def load_auto_merge(source):
     return Loaded(v, [], ".agents/framework.yaml")
 
 
+# SAMPAUDIT (decisions.accepted, user 2026-11-26, revising the removed U1.b): a share of the PRs the gate would merge by itself goes to a
+# human first, risk-weighted. The rates are framework defaults; .agents/framework.yaml review.sampling overrides them (read from the
+# base commit like review.auto_merge, so a PR cannot change the rate it is drawn against).
+SAMPLING_DEFAULT = {"tier0": 0.05, "tier1": 0.2}
+SAMPLING_KEYS = tuple(SAMPLING_DEFAULT)
+SAMPLED_LABEL = "agentive:sampled-for-review"
+APPROVED_LABEL = "agentive:auto-approved"
+SAMPLE_BAD_LABEL = "agentive:sample-found-bad"
+# How a human finds the PRs (REST through gh api: gh pr and gh issue use GraphQL, RESTONLY E2E-15). {owner} and {repo} are filled by gh.
+_ISSUES = 'gh api "repos/{owner}/{repo}/issues?labels=%s&state=%s" --jq \'.[] | select(.pull_request) | "#\\(.number) \\(.title)"\''
+FIND_SAMPLED_CMD = _ISSUES % (SAMPLED_LABEL, "open")
+FIND_APPROVED_CMD = _ISSUES % (APPROVED_LABEL, "closed")
+READ_AUDIT_CMD = ('gh api "repos/{owner}/{repo}/issues/<n>/comments" --jq \'.[] | select(.user.login == "github-actions[bot]" and '
+                  '(.body | contains("agentive-audit"))) | .body\'')
+
+
+def _rate_ok(v):
+    return isinstance(v, (int, float)) and not isinstance(v, bool) and 0 <= v <= 1
+
+
+def load_sampling(source):
+    """Loaded({tier0, tier1} rates in [0, 1]) for review.sampling in .agents/framework.yaml, source = (path -> text | None) of the
+    base tree. Absent file, key or tier -> the framework default; an unparsable file or a value that is not a number in [0, 1] ->
+    the framework default for that tier and a problem [design judgment: a broken config never lowers the sampling]."""
+    rates = dict(SAMPLING_DEFAULT)
+    text = source(".agents/framework.yaml")
+    if text is None:
+        return Loaded(rates, [], "framework default")
+    try:
+        doc = ayaml.loads(text) or {}
+    except ayaml.YAMLError as e:
+        return Loaded(rates, [f".agents/framework.yaml: {e}; review.sampling uses the framework defaults"], ".agents/framework.yaml")
+    rv = doc.get("review") if isinstance(doc, dict) else None
+    sm = rv.get("sampling") if isinstance(rv, dict) else None
+    if sm is None:
+        return Loaded(rates, [], "framework default")
+    if not isinstance(sm, dict):
+        return Loaded(rates, [".agents/framework.yaml review.sampling must be a mapping with tier0 and tier1; defaults used"], ".agents/framework.yaml")
+    probs = []
+    for k, v in sm.items():
+        if k not in SAMPLING_KEYS:
+            probs.append(f".agents/framework.yaml review.sampling.{k} is not one of {', '.join(SAMPLING_KEYS)}; ignored")
+        elif not _rate_ok(v):
+            probs.append(f".agents/framework.yaml review.sampling.{k} {v!r} is not a number from 0 to 1; the default {SAMPLING_DEFAULT[k]} is used")
+        else:
+            rates[k] = float(v)
+    return Loaded(rates, probs, ".agents/framework.yaml")
+
+
 def migrate_decisions(decisions_doc, pipeline_doc=None):
     """V1-18 migration of a v0.1.0 .agents/decisions.yaml (parsed) and review.pipeline.auto_merge.tier1.
     -> {"auto_merge": value or None, "notes": [text]}. None = nothing to write (the value is, or maps to, the framework default).

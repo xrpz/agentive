@@ -410,6 +410,15 @@
       "owner": "A",
       "class": "whole",
       "confirm_scope": [],
+      "install": ".agents/lib/agentive/review/audit.py",
+      "template": "repo-layer/dot-agents/lib/agentive/review/audit.py",
+      "executable": false
+    },
+    {
+      "unit": "lib.agentive",
+      "owner": "A",
+      "class": "whole",
+      "confirm_scope": [],
       "install": ".agents/lib/agentive/review/config.py",
       "template": "repo-layer/dot-agents/lib/agentive/review/config.py",
       "executable": false
@@ -556,6 +565,15 @@
       "confirm_scope": [],
       "install": ".agents/lib/agentive/review/rv8.py",
       "template": "repo-layer/dot-agents/lib/agentive/review/rv8.py",
+      "executable": false
+    },
+    {
+      "unit": "lib.agentive",
+      "owner": "A",
+      "class": "whole",
+      "confirm_scope": [],
+      "install": ".agents/lib/agentive/review/sampling.py",
+      "template": "repo-layer/dot-agents/lib/agentive/review/sampling.py",
       "executable": false
     },
     {

@@ -1,5 +1,5 @@
 # agentive-unit: lib.agentive
-# design: spec.review_pipeline.severity_blocking (nit, answer, reply_line.finding_marker), spec.review_pipeline.convergence, decisions.accepted[EFFECTIVECHECKS], decisions.accepted[WFCHANGE], decisions.accepted[EVALOVERRIDE], decisions.accepted[LOCALTIER], decisions.accepted[COMMENTUX] (owner D)
+# design: spec.review_pipeline.severity_blocking (nit, answer, reply_line.finding_marker), spec.review_pipeline.convergence, decisions.accepted[EFFECTIVECHECKS], decisions.accepted[WFCHANGE], decisions.accepted[EVALOVERRIDE], decisions.accepted[LOCALTIER], decisions.accepted[COMMENTUX], decisions.accepted[SAMPAUDIT] (owner D)
 """PR comment text. Important findings are posted inline (they carry file:line) with the finding marker; nits and
 pre_existing findings go only to review-report.json and a collapsed section of the summary comment (never inline,
 never sent to the author agent as fix requests, F1e). Refuted findings are recorded, not posted.
@@ -7,6 +7,7 @@ never sent to the author agent as fix requests, F1e). Refuted findings are recor
 import json
 import re
 
+from . import audit
 from . import config as cfgmod
 from . import findings as fmod
 from . import llmstate
@@ -421,6 +422,9 @@ def why_items(report, extras=None, reasons=None):
         add("G10", "The risk rubric override did not validate, so tier 1 goes to a human.", ["rubric_invalid"])
     if "tier1_off" in codes:
         add("G10", "The review config did not validate, so tier 1 goes to a human.", ["tier1_off"])
+    for d in _details(reasons, "sampled_for_review"):
+        add("G10", f"This PR passed every automated check and would have merged by itself, but it was drawn as a sample: a human "
+                   f"reviews it first (label {cfgmod.SAMPLED_LABEL}).", ["sampled_for_review"])
     for d in _details(reasons, "demoted"):
         add("G10", "Auto-merge is paused for this tier and author after a recent revert (open issue labeled "
                    "agentive:auto-merge-demoted).", ["demoted"])
@@ -464,6 +468,11 @@ def verdict(report, items, extras=None):
             return "block", "blocked — plan steps out of order", "Author: " + first["text"].split(": ", 1)[1]
         return ("block", "blocked — required check failed",
                 "Author: fix the failed check (open its job log), then push.")
+    if "sampled_for_review" in {c for c, _ in _split(rv8.get("reasons"))} and not [it for it in items if it["group"] != "G10"]:
+        return ("ok", "sampled — a human reviews it first",
+                f"Review this PR as you would any other and merge it when satisfied: it passed every check and would have merged "
+                f"automatically, and it was drawn for a human check. If the approval was wrong, label it "
+                f"`{cfgmod.SAMPLE_BAD_LABEL}` so the kill switch counts it, then run /distill.")
     if "would_auto_merge" in {c for c, _ in _split(rv8.get("reasons"))} and not [it for it in items if it["group"] != "G10"]:
         setting = rv8.get("auto_merge_setting") or cfgmod.AUTO_MERGE_DEFAULT
         return ("ok", "ready for a human to merge",
@@ -688,6 +697,8 @@ def summary_comment(report, posted_now, extras, final=True):
     out += ["", f"<details><summary>{_details_summary(report, extras)}</summary>", ""]
     out += detail_lines(report, extras, reasons, overflow, notes, final)
     out += ["", "</details>"]
+    if final and extras.get("audit"):                             # SAMPAUDIT: the audit record, last, one line, bot-written
+        out += ["", audit.block(extras["audit"])]
     return "\n".join(out) + "\n"
 
 

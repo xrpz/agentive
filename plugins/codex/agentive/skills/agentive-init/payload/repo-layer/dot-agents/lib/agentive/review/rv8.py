@@ -1,5 +1,5 @@
 # agentive-unit: lib.agentive
-# design: spec.review_pipeline.stages[RV8], spec.review_pipeline.auto_merge_policy, spec.review_pipeline.convergence.cap, spec.review_pipeline.severity_blocking.reply_line.disputed, spec.work_loop.pr_explainer.enforcement, decisions.accepted[EFFECTIVECHECKS], decisions.accepted[DEPHUMAN] (owner D)
+# design: spec.review_pipeline.stages[RV8], spec.review_pipeline.auto_merge_policy, spec.review_pipeline.convergence.cap, spec.review_pipeline.severity_blocking.reply_line.disputed, spec.work_loop.pr_explainer.enforcement, decisions.accepted[EFFECTIVECHECKS], decisions.accepted[DEPHUMAN], decisions.accepted[SAMPAUDIT] (owner D)
 """RV8 policy gate: a pure function of its inputs -> review-report rv8 (block | human_required | pass + auto_merge).
 
 Evaluation order (design rules, top first):
@@ -16,7 +16,9 @@ Evaluation order (design rules, top first):
   5 review.auto_merge (off: every PR to a human; dry_run: nothing merges, a PR that would have merged gets the label
     agentive:shadow-auto-merge; low_risk (the default, U1=C): tier 0 merges, a qualifying tier 1 PR gets the label; low_and_medium_risk: tier 0
     and tier 1 merge, tier 1 only with an RV7b score at or below the threshold), then the kill switch (demoted scope ->
-    human_required). The setting is a framework default overridden in .agents/framework.yaml (DEFAULTS, V1-18)
+    human_required), then the sample (SAMPAUDIT: a PR that would merge by itself and is drawn goes to a human first, reason
+    sampled_for_review, label agentive:sampled-for-review). The setting is a framework default overridden in .agents/framework.yaml
+    (DEFAULTS, V1-18)
 review_rounds_exceeded [design judgment]: from round 3 on, an open blocking finding turns the unanswered-finding block into
 human_required (the author rethinks the approach, a human decides); failing checks still block.
 """
@@ -24,7 +26,8 @@ from .. import common
 from . import util
 from . import config as cfgmod
 from . import rv4 as rv4mod
-from .config import AUTO_MERGE_DEFAULT, AUTO_MERGE_LABEL
+from . import sampling
+from .config import AUTO_MERGE_DEFAULT, AUTO_MERGE_LABEL, SAMPLED_LABEL
 
 ROUND_CAP = 3
 
@@ -45,7 +48,8 @@ def decide(inp):
     """inp keys: tier, rv4_reasons, rv2, u2, checks, required_checks, findings, rv7b, auto_merge (off | dry_run | low_risk |
     low_and_medium_risk), config_valid,
     explainer (present, problems) or None, chain, review_round, pending_verbs, require_explicit (E2E-19), signals, llm_problems, head_sha,
-    trigger, kill_switch (callable(tier) -> {count, demoted, ...}) or None, source, exempt ({code, detail} or None)."""
+    trigger, kill_switch (callable(tier) -> {count, demoted, ...}) or None, source, exempt ({code, detail} or None),
+    sampling ({tier0, tier1} rates; absent = no sample) and sample_seed (sampling.seed text: repository id and PR number)."""
     reasons, codes = [], []
 
     def add(code, detail=None):
@@ -178,7 +182,14 @@ def decide(inp):
             merges = {"low_risk": tier == 0, "low_and_medium_risk": tier in (0, 1)}.get(setting, False)
             if _not_demoted(inp, tier, out):
                 if merges:
-                    merge_now = True
+                    smp = sampling.select(tier, inp.get("sampling"), inp.get("sample_seed") or "") if inp.get("sampling") else None
+                    if smp:
+                        out["sampled"] = smp
+                    if smp and smp["selected"]:
+                        add("sampled_for_review", f"drawn {smp['draw']:.4f} < rate {smp['rate']:g} for tier {tier}: this PR would have merged "
+                                                  f"automatically; a human reviews it first (label {SAMPLED_LABEL})")
+                    else:
+                        merge_now = True
                 else:
                     out["would_auto_merge"] = True
                     add("would_auto_merge", f"review.auto_merge is {setting}: this tier {tier} PR would have been merged; "

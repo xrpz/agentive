@@ -235,7 +235,7 @@ x = copy.deepcopy(sh); x['rv8']['check_conclusion'] = 'failure'; chk("review-rep
 x = copy.deepcopy(sh); x['rv8']['check_conclusion'] = 'neutral'; chk("review-report: neutral conclusion", "review-report.schema.json", x, False)
 x = copy.deepcopy(rep); x['rv8']['check_conclusion'] = 'success'; chk("review-report: block concluding success", "review-report.schema.json", x, False)
 x = copy.deepcopy(rep); x['rv8'].pop('head_sha'); chk("review-report: gate without head_sha (P4)", "review-report.schema.json", x, False)
-x = copy.deepcopy(rep); x['rv8']['sampled'] = True; chk("review-report: sampled (U1.b removed)", "review-report.schema.json", x, False)
+x = copy.deepcopy(rep); x['rv8']['sampled'] = True; chk("review-report: rv8.sampled must be an object (SAMPAUDIT; the boolean of the removed U1.b stays invalid)", "review-report.schema.json", x, False)
 x = copy.deepcopy(rep); x['rv7b'] = {"score": None, "reason": "rubric_undecided"}; chk("review-report: rubric_undecided (U6 decided)", "review-report.schema.json", x, False)
 x = copy.deepcopy(rep); x['findings'][0].pop('verification'); chk("review-report: ci finding without verification", "review-report.schema.json", x, False)
 x = copy.deepcopy(rep); x['findings'][0]['verification']['verdict'] = 'refuted'; chk("review-report: refuted but blocking", "review-report.schema.json", x, False)
@@ -346,7 +346,19 @@ cond("pr-body: body without How to revert fails the heading check", not headings
 x = copy.deepcopy(pr); x['agentive-review']['pipeline']['gate']['would_auto_merge'] = True; chk("pr-body: auto-merge together with would_auto_merge", "pr-body-agentive-review.schema.json", x, False)
 x = copy.deepcopy(pr); x['agentive-review']['pipeline']['tier']['value'] = 2; chk("pr-body: tier 2 auto-merge", "pr-body-agentive-review.schema.json", x, False)
 x = copy.deepcopy(pr); x['agentive-review']['pipeline']['risk_score'] = {"score": None, "reason": "tier1_off"}; chk("pr-body: tier 1 auto-merge without score", "pr-body-agentive-review.schema.json", x, False)
-x = copy.deepcopy(pr); x['agentive-review']['pipeline']['gate']['sampled'] = True; chk("pr-body: sampled (removed)", "pr-body-agentive-review.schema.json", x, False)
+
+# ================= SAMPAUDIT (user 2026-11-26): sampling of automated approvals, revising the removed U1.b =================
+smp_ok = copy.deepcopy(am); smp_ok['rv8'] = {"decision": "human_required", "reasons": ["sampled_for_review"], "reason_codes": ["sampled_for_review"], "auto_merge_setting": "low_risk", "auto_merge": False, "check_conclusion": "success", "head_sha": H, "sampled": {"selected": True, "tier": 0, "rate": 0.05, "draw": 0.01}}
+chk("review-report: a sampled PR is human_required with rv8.sampled", "review-report.schema.json", smp_ok, True)
+x = copy.deepcopy(smp_ok); x['rv8']['auto_merge'] = True; x['rv8']['decision'] = 'pass'; chk("review-report: a sampled PR cannot also be auto-merged", "review-report.schema.json", x, False)
+x = copy.deepcopy(smp_ok); x['rv8']['sampled']['rate'] = 1.5; chk("review-report: sampling rate above 1", "review-report.schema.json", x, False)
+x = copy.deepcopy(smp_ok); x['rv8']['sampled']['tier'] = 2; chk("review-report: sampling a tier 2 PR", "review-report.schema.json", x, False)
+x = copy.deepcopy(am); x['rv8']['sampled'] = {"selected": False, "tier": 1, "rate": 0.2, "draw": 0.7}; chk("review-report: an approved PR records its draw", "review-report.schema.json", x, True)
+for v_, ok_ in [({"tier0": 0.05, "tier1": 0.2}, True), ({"tier0": 0, "tier1": 1}, True), ({"tier1": 0.5}, True), ({"tier0": 1.2}, False), ({"tier0": "high"}, False), ({"tier2": 0.1}, False)]:
+    chk(f"project-config: review.sampling {v_}", "project-config.schema.json", {"review": {"sampling": v_}}, ok_)
+x = copy.deepcopy(pr); x['agentive-review']['pipeline']['gate'].update({"auto_merge": False, "decision": "human_required", "sampled": True}); chk("pr-body: gate.sampled", "pr-body-agentive-review.schema.json", x, True)
+x = copy.deepcopy(pr); x['agentive-review']['pipeline']['gate']['sampled'] = 'yes'; chk("pr-body: gate.sampled must be a boolean", "pr-body-agentive-review.schema.json", x, False)
+x = copy.deepcopy(pr); x['agentive-review']['pipeline']['gate']['sampled'] = True; chk("pr-body: sampled together with auto_merge true", "pr-body-agentive-review.schema.json", x, False)
 x = copy.deepcopy(pr); x['agentive-review']['reviews'][0]['perspective'] = 'security'; chk("pr-body: old perspective field", "pr-body-agentive-review.schema.json", x, False)
 x = copy.deepcopy(pr); x['agentive-review']['hotfix_of'] = 41; chk("pr-body: hotfix_of (kill switch input)", "pr-body-agentive-review.schema.json", x, True)
 x = copy.deepcopy(pr); x['agentive-review']['pipeline']['verified_findings'] = [{"id": "f1", "severity": "nit", "blocking": True, "verdict": "confirmed", "file": "a", "line": 1, "summary": "s"}]
@@ -863,7 +875,7 @@ cond("view: every map item and arrow has layout", {i['id'] for i in mv['items']}
 ch = sp['spec_stage']['chain']
 cond("framework.yaml: CHAIN accepted, decided_by user 2026-10-27, id not retired", acc.get('CHAIN', {}).get('decided_by') == 'user' and acc['CHAIN']['decided_at'] == '2026-10-27' and 'CHAIN' not in removed_ids and ch['id'] == 'CHAIN')
 cond("framework.yaml: CHAIN records that it overrides SPEC and SMALLPR", any('SPEC' in o for o in acc['CHAIN']['overrides']) and any('SMALLPR' in o for o in acc['CHAIN']['overrides']) and 'CHAIN' in acc['SPEC'].get('superseded_in_part', '') and 'CHAIN' in acc['SMALLPR'].get('superseded_in_part', ''))
-cond("framework.yaml: S124-S232 defined, next free id S233 not used (S155-S161 added by C-067, S162 by CITOOL, S163-S169 by SECPATHS, S170 by SKILLPATHS 2026-10-29, S171-S172 by CIAUTH, S173-S182 by AISTEPFAIL, WFCHANGE and U6 rubric@2, S183-S197 by BASEREF, VERIFYTREE and REGIONNOSHA 2026-10-30, S198-S202 by NOBASELINE 2026-10-31, S203-S208 by DEPHUMAN 2026-10-31, S209-S215 by the EXPLAIN visual revision 2026-10-31, S216-S227 by COMMENTUX, HEADLESSHINT and E2E-33/36 2026-11-01, S228-S230 by SKILLGUIDE 2026-11-01, S231-S232 by TRUSTBASE 2026-11-26)", {f'S{i}' for i in range(124, 233)} <= src_ids and 'S233' not in src_ids)
+cond("framework.yaml: S124-S233 defined, next free id S234 not used (S155-S161 added by C-067, S162 by CITOOL, S163-S169 by SECPATHS, S170 by SKILLPATHS 2026-10-29, S171-S172 by CIAUTH, S173-S182 by AISTEPFAIL, WFCHANGE and U6 rubric@2, S183-S197 by BASEREF, VERIFYTREE and REGIONNOSHA 2026-10-30, S198-S202 by NOBASELINE 2026-10-31, S203-S208 by DEPHUMAN 2026-10-31, S209-S215 by the EXPLAIN visual revision 2026-10-31, S216-S227 by COMMENTUX, HEADLESSHINT and E2E-33/36 2026-11-01, S228-S230 by SKILLGUIDE 2026-11-01, S231-S232 by TRUSTBASE and S233 by SAMPAUDIT 2026-11-26)", {f'S{i}' for i in range(124, 234)} <= src_ids and 'S234' not in src_ids)
 cond("framework.yaml: chain flow is intent -> spec -> plan -> feature", [f['stage'] for f in ch['flow']] == ['intent', 'spec', 'plan', 'feature'])
 cond("framework.yaml: spec.md has no ## Intent section and links intent.md", 'no ## Intent section' in sp['spec_stage']['files']['spec'] and '`Intent: docs/plans/<slug>/intent.md`' in sp['spec_stage']['files']['spec'])
 cond("framework.yaml: intent.md uses the five Academy section names", all(h in sp['spec_stage']['files']['intent'] for h in ['## Problem', '## Proposed outcome', '## Affected users and systems', '## Constraints', '## Open questions']))

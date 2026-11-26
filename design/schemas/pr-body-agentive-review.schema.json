@@ -348,6 +348,10 @@
                 "head_sha": {
                   "type": "string",
                   "pattern": "^[a-f0-9]{7,64}$"
+                },
+                "sampled": {
+                  "type": "boolean",
+                  "description": "SAMPAUDIT: the gate drew this PR for human review before it merges (rv8.sampled.selected; label agentive:sampled-for-review). The kill switch reads it: a PR with this flag that a human labeled agentive:sample-found-bad counts like a revert or hotfix of an auto-merged PR"
                 }
               },
               "allOf": [
@@ -391,6 +395,28 @@
                     "properties": {
                       "auto_merge": {
                         "const": false
+                      }
+                    }
+                  }
+                },
+                {
+                  "if": {
+                    "properties": {
+                      "sampled": {
+                        "const": true
+                      }
+                    },
+                    "required": [
+                      "sampled"
+                    ]
+                  },
+                  "then": {
+                    "properties": {
+                      "auto_merge": {
+                        "const": false
+                      },
+                      "decision": {
+                        "const": "human_required"
                       }
                     }
                   }
