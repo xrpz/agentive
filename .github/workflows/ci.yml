@@ -12,6 +12,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0              # upgrade_matrix reads every earlier release out of git history
       - uses: actions/setup-python@v5
         with:
           python-version: "3.13"      # E2E-41: the selftests run the engine, which stops below the python floor (3.13)
@@ -26,6 +28,8 @@ jobs:
         run: python3 tools/selftest.py component_tests
       - name: sample_repo_tests
         run: python3 tools/selftest.py sample_repo_tests
+      - name: upgrade_matrix
+        run: python3 tools/selftest.py upgrade_matrix
       - name: version_sync_check
         run: python3 tools/selftest.py version_sync_check
   runtime-python-floor:

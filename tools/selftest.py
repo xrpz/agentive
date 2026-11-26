@@ -16,6 +16,7 @@ Steps (ids from design spec.framework_repo.self_tests.items, plus the ones marke
   component_tests     unittest discovery of tests/<area>/test_*.py except sample_repo, design and budget [설계 판단]; the areas run as
                       separate processes at the same time (at most os.cpu_count()), reported in sorted order with each time
   sample_repo_tests   deterministic init/apply tests on fixtures/{ts,py,go,java} (tests/sample_repo/, owner D)
+  upgrade_matrix      install every earlier release (tests/upgrade_matrix/releases.json) with its own engine, edit, run the current update [설계 판단]
   version_sync_check  package.json version == both plugin manifests == Codex skills.lock pinned_ref (== CHANGELOG.md head) [S50]
 
 --fast [설계 판단, decisions.accepted[SELFTESTFAST]] runs generate_check, schema_validation, size_budget and version_sync_check
@@ -75,7 +76,7 @@ def _test_files(d):
     return hits
 
 
-NON_COMPONENT_AREAS = ("sample_repo", "design", "budget", "__pycache__")   # each has its own step
+NON_COMPONENT_AREAS = ("sample_repo", "upgrade_matrix", "design", "budget", "__pycache__")   # each has its own step
 
 
 def component_areas():
@@ -133,6 +134,13 @@ def step_sample_repo_tests():
     return rc == 0, tail(out)
 
 
+def step_upgrade_matrix():
+    if not _test_files(os.path.join("tests", "upgrade_matrix")):
+        return False, "tests/upgrade_matrix/ has no test_*.py"
+    rc, out = _discover(os.path.join("tests", "upgrade_matrix"))
+    return rc == 0, tail(out)
+
+
 def step_version_sync_check():
     with open(os.path.join(ROOT, "package.json"), encoding="utf-8") as f:
         version = json.load(f)["version"]
@@ -164,6 +172,7 @@ STEPS = {
     "size_budget": (step_size_budget, "shorten the installed AGENTS.md text or the skill descriptions the SIZE lines name (limits: tests/budget/test_size_budget.py); for a missing deny rule add the named Edit(...) line to permissions.deny in .claude/settings.json (confirm path: ask the author first)"),
     "component_tests": (step_component_tests, "fix the failing tests/<area> test or the code it covers"),
     "sample_repo_tests": (step_sample_repo_tests, "fix the engine or templates the failing fixture test names"),
+    "upgrade_matrix": (step_upgrade_matrix, "fix the engine or templates so update from the named release works, or add a missing release to tests/upgrade_matrix/releases.json (the file says how); needs the git history of the releases (CI: fetch-depth 0)"),
     "version_sync_check": (step_version_sync_check, "never edit versions by hand: npm run version (changesets), or python3 tools/generate.py"),
 }
 
@@ -180,6 +189,7 @@ GENERATED = ("plugins/", "docs/map/", "docs/DECISIONS.md", "design/INDEX.md", ".
 FAST_RULES = [
     ("tests/sample_repo/", ["sample_repo"]),
     ("fixtures/", ["sample_repo"]),
+    ("tests/upgrade_matrix/", ["upgrade_matrix"]),
     ("tests/design/", []),
     ("tests/budget/", []),
     ("tests/", None),            # tests/<area>/...: that area (resolved below)
@@ -224,6 +234,8 @@ def plan(paths):
                     areas.add(area)
                 elif rule == ["sample_repo"]:
                     wanted.add("sample_repo_tests")
+                elif rule == ["upgrade_matrix"]:
+                    wanted.add("upgrade_matrix")
                 else:
                     areas.update(rule)
                 break

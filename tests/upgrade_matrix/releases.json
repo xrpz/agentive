@@ -1,0 +1,7 @@
+{
+  "_doc": "Every earlier release of agentive. Releases are commits (no tags yet): `ref` is the commit of the `Release vX.Y.Z` step, whose plugins/claude-code/agentive/payload is that release's repo layer + engine. To add a release: right after the release commit (`npm run version` = U3 release) add {\"version\": \"<new X.Y.Z>\", \"ref\": \"<that commit sha>\"} to the end of this list in the next commit. test_every_release_commit_is_listed fails (CI runs with full history) when a `Release v*` commit other than the current package.json version is missing here. docs/IMPLEMENTATION.md section 6 (upgrade_matrix).",
+  "releases": [
+    {"version": "0.1.0", "ref": "5af5fc5"},
+    {"version": "0.1.1", "ref": "802069f"}
+  ]
+}

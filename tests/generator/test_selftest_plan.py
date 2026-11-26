@@ -54,6 +54,10 @@ class Plan(unittest.TestCase):
             steps, areas, _ = selftest.plan([path])
             self.assertEqual((steps, areas), (["generate_check", "schema_validation", "size_budget", "sample_repo_tests", "version_sync_check"], []), path)
 
+    def test_upgrade_matrix_tests_run_the_upgrade_step_only(self):
+        steps, areas, _ = selftest.plan(["tests/upgrade_matrix/releases.json"])
+        self.assertEqual((steps, areas), (["generate_check", "schema_validation", "size_budget", "upgrade_matrix", "version_sync_check"], []))
+
     def test_generated_outputs_and_version_files_add_nothing(self):
         steps, areas, why = selftest.plan(["plugins/claude-code/agentive/payload/index.json", "docs/map/index.html", "docs/DECISIONS.md",
                                            "design/INDEX.md", ".changeset/x.md", "package.json", "CHANGELOG.md"])
@@ -67,7 +71,7 @@ class Plan(unittest.TestCase):
         self.assertEqual(selftest.component_areas(), sorted(selftest.component_areas()))
         for area in ("generator", "engine", "review", "content", "hooks", "ci", "plugin", "lib"):
             self.assertIn(area, selftest.component_areas())
-        for own_step in ("sample_repo", "design", "budget"):
+        for own_step in ("sample_repo", "upgrade_matrix", "design", "budget"):
             self.assertNotIn(own_step, selftest.component_areas())
 
 
