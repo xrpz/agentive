@@ -25,3 +25,4 @@ ENGINE: `python3 "${CLAUDE_PLUGIN_ROOT}/payload/engine/apply.py" --tool claude` 
      command, correct the values file and run step 3 once more; still failing -> report the slot as unproved.
 4. Report the proved and failed verbs and that `.agents/manifest.yaml` changed; it is committed through the normal
    commit procedure (reprove never commits).
+5. Last line of the report: tell the human, in one line, to run `/doctor prompt-audit` (Claude Code v2.1.283 or later) after a model or plugin upgrade: it audits CLAUDE.md files, skills, agents and commands for wording written for older models, and the human decides on its report. Nothing runs it automatically.

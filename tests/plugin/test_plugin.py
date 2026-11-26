@@ -49,6 +49,25 @@ class SkillTest(unittest.TestCase):
         self.assertIn("--managed-review-copy", frontmatter(os.path.join(CLAUDE, "skills", "init", "SKILL.md"))[0]["argument-hint"])
         self.assertIn("--force", frontmatter(os.path.join(CLAUDE, "skills", "update", "SKILL.md"))[0]["argument-hint"])
 
+    def test_doctor_prompt_audit_hint_is_on_the_claude_update_and_reprove_report_only(self):
+        """impl26 B7: the last line of the Claude Code update and reprove report points the human to /doctor prompt-audit (official: the
+        subcommand needs Claude Code v2.1.283 or later). Codex and the installed AGENTS.md say nothing about it; the shared final-report.md
+        (read by the Codex skills too) does not carry it."""
+        for name in ("update", "reprove"):
+            text = rtext(os.path.join(CLAUDE, "skills", name, "SKILL.md"))
+            self.assertIn("/doctor prompt-audit", text, name)
+            self.assertIn("v2.1.283", text, name)
+            self.assertIn("after a model or plugin upgrade", text, name)
+            self.assertIn("Nothing runs it automatically", text, name)
+        for path in (os.path.join(ROOT, "src", "engine", "final-report.md"), os.path.join(ROOT, "src", "repo-layer", "AGENTS.md.regions", "context.md")):
+            if os.path.isfile(path):
+                self.assertNotIn("prompt-audit", rtext(path), path)
+        for d in (os.path.join(CODEX, "skills", "agentive-init"), os.path.join(CODEX, "skills", "agentive-update")):
+            for base, _dirs, files in os.walk(d):
+                for fn in files:
+                    if fn.endswith((".md", ".yaml")) and "repo-layer" not in base:
+                        self.assertNotIn("prompt-audit", rtext(os.path.join(base, fn)), os.path.join(base, fn))
+
     def test_codex_skills_and_openai_yaml(self):
         for name in ("agentive-init", "agentive-update"):
             d = os.path.join(CODEX, "skills", name)

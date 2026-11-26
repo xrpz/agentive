@@ -57,3 +57,5 @@ invalid overrides: the file was left untouched).
 ## 5. Final report
 
 Read `${CLAUDE_PLUGIN_ROOT}/payload/engine/final-report.md` and report in the order it gives, starting with the hooks and guard status. Lines marked (update) apply to this command; skip the lines marked (init).
+
+Last line of the report (Claude Code only): tell the human, in one line, to run `/doctor prompt-audit` (Claude Code v2.1.283 or later) after a model or plugin upgrade: it audits CLAUDE.md files, skills, agents and commands for wording written for older models, and the human decides on its report. Nothing runs it automatically.
