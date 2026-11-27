@@ -40,7 +40,7 @@ CODEX_INTERFACE_TEXT_LEN = 1024
 # fcakyon/claude-codex-settings b361f98 keeps skill bodies over Antigravity's 24,000-byte loading limit in a separate file
 # (another tool's limit, the same method: a loader limit turned into a check). 미검증: that Codex truncates a body at 8,000 bytes.
 SKILL_BODY_BUDGET = 8000
-OVER_BUDGET = {"distill": 12990, "pr": 8330}    # skill dir name -> ceiling in bytes of the installed SKILL.md; remove an entry once under budget
+OVER_BUDGET = {"distill": 12295}    # skill dir name -> ceiling in bytes of the installed SKILL.md; remove an entry once under budget (SLIM26: was distill 12,990, pr 8,330; pr is under budget now)
 IMPORT = re.compile(r"(?<![\w`])@((?:\.{0,2}/)?[\w][\w./-]*\.\w+)")
 FENCE = re.compile(r"^\s*(```|~~~)")
 CODE_SPAN = re.compile(r"`[^`\n]*`")

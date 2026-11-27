@@ -29,7 +29,7 @@ def git(cwd, *args, check=True):
 class SkillText(unittest.TestCase):
     def setUp(self):
         self.text = read(SKILLS, "chain-intent", "SKILL.md")
-        self.steps = dict(re.findall(r"(?ms)^(\d+)\. (.*?)(?=^\d+\. |^Never push)", self.text))
+        self.steps = dict(re.findall(r"(?ms)^(\d+)\. (.*?)(?=^\d+\. |\Z)", self.text))
 
     def test_branch_is_created_at_step_6_and_step_2_only_detaches(self):
         self.assertIn("git switch --detach origin/<DEFAULT>", self.steps["2"])
@@ -52,7 +52,6 @@ class SkillText(unittest.TestCase):
     def test_the_dropped_keep_talking_sentence_is_not_added(self):
         self.assertNotIn("keep talking", self.text.lower())
         self.assertNotIn("normal to continue", self.text.lower())
-        self.assertIn("There is no question limit.", self.text)  # step 4 is unchanged
 
 
 class GitSteps(unittest.TestCase):

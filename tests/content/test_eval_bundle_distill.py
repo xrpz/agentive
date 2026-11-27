@@ -191,7 +191,7 @@ class DistillSkillText(unittest.TestCase):
         text = read(SKILLS, "distill", "SKILL.md")
         self.assertLessEqual(len(text.splitlines()), 500)
         for needle in ("scripts/eval-case.sh draft positive", "scripts/eval-case.sh", "draft negative", "EVALCASE=skipped reason=no_fix_location",
-                       "revert only, no fix location", "EVALCASE_BODY=", "## Eval cases", "section 3a", "never write `confirmed` yourself",
+                       "revert only, no fix location", "EVALCASE_BODY=", "## Eval cases", "section 3a", "do not write `confirmed` yourself",
                        "narrowest hunk of the fix", "A `not_important` answer gets no case"):
             self.assertIn(needle, text, needle)
         self.assertNotIn("Also draft a negative reviewer eval case `evals/reviewer/<id>.yaml` (label negative", text)
