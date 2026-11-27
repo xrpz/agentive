@@ -4,7 +4,7 @@
 Index of the decision register in `design/framework.yaml` (`decisions.*`). Each id is stable and never reused.
 Read the full entry with `python3 tools/design.py get decisions.accepted[<ID>]` (line numbers: `design/INDEX.md`); the map page is `docs/map/index.html`.
 
-## Accepted design decisions (113)
+## Accepted design decisions (114)
 
 | id | title | decided_at | revised_at | spec_ref |
 |---|---|---|---|---|
@@ -121,6 +121,7 @@ Read the full entry with `python3 tools/design.py get decisions.accepted[<ID>]` 
 | TESTGUARD | weakened tests are detected by code, locally at Stop and in CI, and sent to a human (item B1) | 2026-11-26 |  | ['spec.stop_hook', 'spec.review_pipeline.stages[RV1]', 'spec.review_pipeline.stages[RV2]', 'spec.review_pipeline.stages[RV8]', 'contracts[stop-state]', 'contracts[review-report]'] |
 | MEASUREDWITH | a reviewer eval score names the model and CLI version it was measured with, and a change of either asks for a re-score (item B3, part 1) | 2026-11-26 |  | ['spec.review_pipeline.reviewer_eval', 'contracts[reviewer-eval-case]'] |
 | PLUGINEVAL | an opt-in eval suite of agentive itself with a no-plugin baseline, in this framework repo only (item B3, part 2) | 2026-11-26 |  | ['spec.framework_repo', 'spec.review_pipeline.reviewer_eval'] |
+| SLIM26 | slim the always-loaded instructions (S1) and the procedural skill bodies (S2): keep what a model cannot infer, drop emphasis, absolute wording and advice a current model follows without being told | 2026-11-27 |  | ['spec.repo_layer.files[f-agents-md]', 'spec.context_management', 'spec.verification'] |
 
 ## Decided user choices (U items) (5)
 

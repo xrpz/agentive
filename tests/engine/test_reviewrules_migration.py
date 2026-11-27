@@ -127,7 +127,7 @@ class MigrationFromThePreviousTemplate(Base):
 
     def test_a_user_edited_region_is_reported_not_overwritten_and_accept_moves_it(self):
         self.old_install()
-        self.put("AGENTS.md", self.read("AGENTS.md").replace("Worktrees: untracked files", "Worktrees (my words): untracked files"))
+        self.put("AGENTS.md", self.read("AGENTS.md").replace("Docs vs code: descriptive docs", "Docs vs code (my words): descriptive docs"))
         rc, out, changed = self.run_engine(PAYLOAD, "update")
         self.assertEqual(rc, 0, out)
         self.assertIn("AGENTIVE_DRIFT id=AGENTS.md#context reason=customized", out)

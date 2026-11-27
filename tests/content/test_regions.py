@@ -96,7 +96,9 @@ class AgentsMd(unittest.TestCase):
         self.assertNotIn("@code_review.md", self.ctx)
         self.assertIn("Review gate config: code_review.md holds the machine rules of the CI review gate", self.ctx)
         self.assertIn("open it only to change them", self.ctx)
-        self.assertIn("/run-skill-generator", self.ctx)
+        # SLIM26: the run-skill and worktree lines are gone (a Claude Code built-in skill and a harness file the model finds itself)
+        self.assertNotIn("/run-skill-generator", self.ctx)
+        self.assertNotIn("worktreeinclude", self.ctx)
         self.assertIn("Docs vs code:", self.ctx)
         # NOBOUNDARYLINE (2026-10-29): no generated boundary line and no service facts lines
         self.assertNotIn("render.boundary_line", self.ctx)
@@ -112,6 +114,17 @@ class AgentsMd(unittest.TestCase):
         self.assertLessEqual(len(lines[0]), 260)
     def test_short(self):
         self.assertLessEqual(len(self.ctx.splitlines()), 30)
+        # SLIM26: slimmed to the non-inferable rules (measured 4,213 bytes installed before, see decisions.accepted[SLIM26])
+        self.assertLessEqual(len(self.ctx.encode("utf-8")), 3000)
+
+    def test_no_emphasis_or_absolute_wording(self):
+        """SLIM26 (Claude Code best practices 'What you can stop doing': emphasis makes the model over-apply a rule; the Fable 5.2
+        page: an instruction with 'never' is read as absolute). A rule that cannot bend belongs in a hook, not in this file."""
+        for word in re.findall(r"[A-Za-z]+", self.ctx):
+            if len(word) > 3 and word.isupper() and word not in ("HANDOFF", "PENDING", "DIRTY", "HARVEST", "NEXT", "CONFIRMATION", "HEAD"):
+                self.fail("capitalized emphasis: " + word)
+        for absolute in ("never", "always", "must", "IMPORTANT", "do not ever"):
+            self.assertNotIn(absolute, self.ctx.replace("Do not relitigate", ""), absolute)
 
     def test_path_rules_heading(self):
         pr = read(SRC, "AGENTS.md.regions", "path-rules.md")

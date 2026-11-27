@@ -367,6 +367,9 @@ class InitUpdateTest(Base):
         self.assertIn(".agents/manifest.yaml", changed)
         self.assertIn("pending (no evidence)", self.read("AGENTS.md"))
         self.assertIn("TODO: Python named in README.md", self.read("AGENTS.md"))
+        verbs = [ln for ln in self.read("AGENTS.md").splitlines() if "pending (no evidence)" in ln and ln.startswith("- ")]
+        self.assertEqual(len(verbs), 1, verbs)           # SLIM26: one line for all pending verbs, not one per verb
+        self.assertIn("`test`", verbs[0])
         settings = json.loads(self.read(".claude/settings.json"))
         self.assertIn("Read(.env)", settings["permissions"]["deny"])
         self.assertIn("Bash(gh pr merge)", settings["permissions"]["deny"])
@@ -438,7 +441,7 @@ class InitUpdateTest(Base):
         self.assertEqual(self.init()[0], 0)
         text = self.read("AGENTS.md")
         self.assertTrue(text.startswith("# Mine\r\n\r\nkeep this\r\n\r\n<!-- AGENTIVE START context -->\r\n"), text[:120])
-        self.put("AGENTS.md", text.replace("Worktrees: untracked files", "Worktrees (edited): untracked files"))
+        self.put("AGENTS.md", text.replace("Docs vs code: descriptive docs", "Docs vs code (edited): descriptive docs"))
         rc, out, changed = self.engine("update")
         self.assertIn("AGENTIVE_DRIFT id=AGENTS.md#context reason=customized", out)
         self.assertNotIn("AGENTS.md", changed)
@@ -580,7 +583,7 @@ class InitUpdateTest(Base):
         self.put("ARCHITECTURE.md", "# a\n")
         self.commit()
         self.assertEqual(self.init()[0], 0)
-        text = self.read("AGENTS.md").replace("Worktrees: untracked files", "Worktrees (edited): untracked files")
+        text = self.read("AGENTS.md").replace("Docs vs code: descriptive docs", "Docs vs code (edited): descriptive docs")
         self.put("AGENTS.md", text + "\nMy own line.\n")
         os.unlink(os.path.join(self.repo, "ARCHITECTURE.md"))
         rc, out, changed = self.engine("update")
@@ -600,6 +603,21 @@ class InitUpdateTest(Base):
         self.assertEqual(json.loads(self.read(".agents/state/drift-report.json"))["stale_check"]["reason"], "not_a_git_repository")
         self.assertEqual(changed, [])
         self.assert_contracts()
+
+
+class PointerLineTest(unittest.TestCase):
+    """SLIM26: the doc-pointer line lost its closing sentence; the stale-pointer check reads both the new line and the line an
+    earlier release wrote, so an existing install still reports a deleted doc."""
+
+    def named(self, line):
+        import apply as engine_apply
+        return engine_apply.Engine.named_paths(line)[0]
+
+    def test_new_and_old_pointer_lines_name_the_same_files(self):
+        new = "Docs (pointers to files that exist): README.md, docs/adr/.\nTests: tests.\n"
+        old = "Docs (pointers to files that exist): README.md, docs/adr/. Read the one that matches your task before guessing.\nTests: tests.\n"
+        self.assertEqual(self.named(new), ["README.md", "docs/adr/"])
+        self.assertEqual(self.named(old), ["README.md", "docs/adr/"])
 
 
 class CiToolTest(Base):
@@ -976,8 +994,8 @@ class E2E09RegionTest(Base):
         self.put("docs/old.md", "# old\n")
         self.put("docs/gone.md", "# gone\n")
         self.commit("docs")
-        text = self.read("AGENTS.md").replace("Worktrees: untracked files",
-                                              "See docs/old.md, docs/gone.md and `docs/architecture.md`.\nWorktrees: untracked files", 1)
+        text = self.read("AGENTS.md").replace("Docs vs code: descriptive docs",
+                                              "See docs/old.md, docs/gone.md and `docs/architecture.md`.\nDocs vs code: descriptive docs", 1)
         self.put("AGENTS.md", text)                                    # a user line inside the region: the region is kept
         self.commit("my line")
         self.git("rm", "-q", "docs/architecture.md")

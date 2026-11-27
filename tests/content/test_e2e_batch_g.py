@@ -14,8 +14,8 @@ class E2E32Text(unittest.TestCase):
     def test_e2e_32_agents_md_names_the_headless_bash_rules(self):
         ctx = read(SRC, "AGENTS.md.regions", "context.md")
         line = next(ln for ln in ctx.splitlines() if ln.startswith("Headless runs (`claude -p`)"))
-        for words in ("one allowlisted command per Bash call", "no `; echo $?`", "no `cd`", "no redirect or heredoc into a file",
-                      "no `sed -i`", "Write and Edit", "`.agents/bin/verb`", "refuses that one command only"):
+        for words in ("the allowlist matches one command at a time", "one command per Bash call", "`; echo $?`", "`cd`", "redirect, heredoc",
+                      "`sed -i`", "Write and Edit", "`.agents/bin/verb`", "stops only that command"):
             self.assertIn(words, line)
         self.assertLessEqual(len([ln for ln in ctx.splitlines() if ln.strip()]), 20)
 

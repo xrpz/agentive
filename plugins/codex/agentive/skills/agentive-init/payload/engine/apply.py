@@ -530,19 +530,20 @@ class Engine:
             if ev.get("stated"):
                 o.append(f"TODO: {ev['stated']['stack']} named in {ev['stated']['source']}; no command until evidence exists.")
         b["render.orientation"] = "\n".join(o)
-        vl = []
+        vl, pending_names = [], []
         for v in VERB_ORDER:
             s = manifest["verbs"].get(v)
             if not s:
                 continue
             if s.get("status") == "pending":
-                t = s.get("todo")
-                vl.append(f"- `{v}`: pending (no evidence)" + (f" TODO: {t['stack']} ({t['source']})" if t else ""))
+                pending_names.append(f"`{v}`")      # SLIM26: one line for all pending verbs; the stack TODO is on the orientation line
             elif v == "verify" and s["cmd"].strip() == prove.SELF:
                 inner = [x for x in ("lint", "typecheck", "test") if manifest["verbs"].get(x, {}).get("cmd")]
                 vl.append(f"- `verify`: `.agents/bin/verb verify` runs {', '.join(inner)} (the inner verbs)")
             else:
                 vl.append(f"- `{v}`: `.agents/bin/verb {v}` runs `{s['cmd']}` (evidence: {s['evidence']['source']})")
+        if pending_names:
+            vl.append(f"- pending (no evidence), no command yet: {', '.join(pending_names)}")
         b["render.verbs"] = "\n".join(vl)
         b["render.verb_list"] = " ".join(v for v in VERB_ORDER if manifest["verbs"].get(v, {}).get("cmd"))
         pend = [v for v in VERB_ORDER if manifest["verbs"].get(v, {}).get("status") == "pending"]
@@ -602,7 +603,7 @@ class Engine:
                         found.append(rel)
                 except OSError:
                     pass
-        return ("Docs (pointers to files that exist): " + ", ".join(found) + ". Read the one that matches your task before guessing.") if found else ""
+        return ("Docs (pointers to files that exist): " + ", ".join(found) + ".") if found else ""
 
     def path_rules(self, rulepacks):
         """AGENTS.md#path-rules block and the pointer-mode .claude/rules copies from one renderer (RULESNEUTRAL):
@@ -1150,7 +1151,7 @@ class Engine:
             if r:
                 self.gen[k] = r
 
-    _POINTER_RE = re.compile(r"(?m)^Docs \(pointers to files that exist\): (.*?)\. Read the one")
+    _POINTER_RE = re.compile(r"(?m)^Docs \(pointers to files that exist\): (.*?)\.(?: Read the one.*)?$")      # SLIM26: the closing sentence is gone; installs made before it still have it
     _TESTS_RE = re.compile(r"(?m)^Tests: (.*)\.$")
 
     @classmethod

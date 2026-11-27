@@ -2,15 +2,15 @@
   "skills": {
     "agentive-init": {
       "path": "skills/agentive-init",
-      "sha256": "a55e871949c150771e144df3b6dd5b8bb028680775d2debe329d2bf4c60cc80f",
-      "verified_at": "2026-11-26T02:02:59Z",
+      "sha256": "3266ef8dceddbcbedf7c9c7e210fd0cc2ea08cc5d225454421ab3ffd393a8537",
+      "verified_at": "2026-11-27T06:00:54Z",
       "pinned_ref": "v0.1.1",
       "source_url": "https://github.com/xrpz/agentive"
     },
     "agentive-update": {
       "path": "skills/agentive-update",
-      "sha256": "cc4339b9ebcc05d6b47dfc3ea7ed7d744fcc8152a9e375614631998f7497060f",
-      "verified_at": "2026-11-26T02:02:59Z",
+      "sha256": "9c00be6ce70b8efe8854ed692903fcc4ac486557a88d3732b2862056882ae618",
+      "verified_at": "2026-11-27T06:00:54Z",
       "pinned_ref": "v0.1.1",
       "source_url": "https://github.com/xrpz/agentive"
     }

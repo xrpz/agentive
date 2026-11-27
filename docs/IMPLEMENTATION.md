@@ -310,6 +310,13 @@ Reviewer eval records (the other half of B3): the runner writes `measured.json` 
 the `modelUsage` keys of the JSON result, `unknown` when absent), `score` copies both into `summary.measured_with`, and a case file's own
 `measured_with` that differs makes the comment list `Re-score required` (diagnostic, never part of the verdict).
 
+Slimmed instructions (impl26 S1 and S2, decision `SLIM26`) [설계 판단 for every detail below; the shrink itself is the user's decision of 2026-11-27]:
+S1. `AGENTS.md#context` keeps only rules a model cannot read from the repo, in plain wording (no capitals, no `never`/`always`/`must`; the headless rule
+says why: the allowlist matches one command at a time). Removed: `Running the app:` and `Worktrees:` (Claude Code built-in skill and a harness file; Codex has
+neither), the closing sentence of the Docs line, and the per-verb pending lines (now one line `- pending (no evidence), no command yet: <verbs>`; the
+SessionStart hook and the verb wrapper still print the pending verbs). `tests/content/test_regions.py` fails on capitalized emphasis, an absolute word or
+more than 3,000 source bytes (the ceiling is mine). Measured on fixtures/py: AGENTS.md 4,213 -> 3,853 bytes, 35 -> 31 non-empty lines.
+
 The agent-run half of sample_repo_tests (fixture tasks through the headless standard command, only when
 init/apply paths change, 1-2 stacks) needs an API key; it is the separate optional workflow job
 `.github/workflows/selftest-agent-run.yml`.
